@@ -1,0 +1,143 @@
+﻿<Window x:Class="RobotControl.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RobotControl.UI"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="504" Width="800">
+    <Grid Margin="5,5,5,5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Orientation="Vertical">
+
+            <CheckBox x:Name="nextTimeStartWithCurrentSettings" Content="Start with this data" Margin="5,5,5,5" />
+            <CheckBox x:Name="enableAudioCheckBox" Content="Enable Audio" Margin="5,5,5,5" IsChecked="True"/>
+            <Label x:Name="label2" Content="Serial port speed:" Margin="5,5,5,5" />
+            <ComboBox x:Name="baudRateComboBox" Margin="5,5,5,5" >
+                <ComboBoxItem Content="2400"                    />
+                <ComboBoxItem Content="4800"                    />
+                <ComboBoxItem Content="9600"                    />
+                <ComboBoxItem Content="19200"                   />
+                <ComboBoxItem Content="38400"                   />
+                <ComboBoxItem Content="57600"                   />
+                <ComboBoxItem Content="74880"                   />
+                <ComboBoxItem Content="115200" IsSelected="True"/>
+                <ComboBoxItem Content="230400"                  />
+            </ComboBox>
+            <CheckBox x:Name="scanForObjects" Content="Detect Objects" Margin="5,5,5,5" IsChecked="False" Checked="scanForObjects_Checked"/>
+            <Label x:Name="label" Content="Objects to detect:" Margin="5,5,5,5" />
+            <StackPanel Grid.Column="0" Margin="5,5,5,5" Orientation="Horizontal">
+                <ComboBox x:Name="objectsToDetectComboBox" Margin="5,0,5,0" Width="100" SelectionChanged="objectsToDetectComboBox_SelectionChanged">
+                    <CheckBox Content="Aeroplane"   Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Bicycle"     Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Bird"        Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Boat"        Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Bottle"      Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Bus"         Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Car"         Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Cat"         Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Chair"       Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Cow"         Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Diningtable" Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Dog"         Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Horse"       Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Motorbike"   Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Person"      Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Pottedplant" Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Sheep"       Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Sofa"        Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Train"       Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                    <CheckBox Content="Tvmonitor"   Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
+                </ComboBox>
+                <Button x:Name="startStop" Content="Start" Click="startStop_ClickAsync" IsEnabled="False"/>
+            </StackPanel>
+            <Image x:Name="objectDetectionImage" Margin="5,5,5,5" Height="152"  />
+
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Vertical">
+            <Label  Content="Configuration:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Bottom" />
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFEFFBFA">
+                <Label  Content="L Multiplier" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <TextBox x:Name="LMult" Width="32" Margin="5,5,5,5" Text="1.00"/>
+                <Label  Content="R Multiplier" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <TextBox x:Name="RMult" Width="32" Margin="5,5,5,5" Text="1.00" />
+                <Button x:Name="testMotors" Margin="5,5,5,5" Content="Test" Click="testMotors_Click" IsEnabled="False"  Width="70" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFEFFBFA">
+                <Label  Content="Scan Power" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <TextBox x:Name="scanPower" Width="32" Margin="5,5,5,5" Text="120"/>
+                <Label  Content="Lurch Pwr" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <TextBox x:Name="lurchPower" Width="32" Margin="5,5,5,5" Text="250" />
+                <Button x:Name="saveConfiguration"  Margin="5,5,5,5" Content="Save Config" Click="saveConfiguration_Click" FontFamily="Arial Narrow" Width="70" />
+            </StackPanel>
+
+            <Label  Content="Quick run:" Margin="0,5,0,0" HorizontalAlignment="Left" Height="26" VerticalAlignment="Bottom" />
+            <StackPanel Grid.Column="1" Margin="5,5,5,0" Orientation="Horizontal" Background="#FFEFFBEF">
+                <Label  Content="L Power" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <TextBox x:Name="LPower" Width="32" Margin="5,5,5,5" Text="200"/>
+                <Label  Content="R Power" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <TextBox x:Name="RPower" Width="32" Margin="5,5,5,5" Text="200" />
+                <Label  Content="Time (ms)" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <TextBox x:Name="TimeToRun" Width="32" Margin="5,5,5,5" Text="1000" />
+                <Button x:Name="runMotors" Width="32" Margin="5,5,5,5" Content="Run" IsEnabled="False" Click="runMotors_Click" />
+            </StackPanel>
+
+            <Label  Content="Data from robot:" Margin="0,5,0,0" HorizontalAlignment="Left" Height="26" VerticalAlignment="Bottom"/>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1" Content="Distance:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblDistance" Content="__di__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy" Content="AccelX:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblAccelX" Content="__ax___" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="43"/>
+                <Image x:Name="accelXImage" HorizontalAlignment="Left" Height="15" Margin="0,5,0,0" VerticalAlignment="Top" Width="15"/>
+                <Image x:Name="accelXChart" HorizontalAlignment="Left" Height="15" Margin="0,5,0,0" VerticalAlignment="Top" Width="120"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy1" Content="AccelY:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblAccelY" Content="__ay__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="38"/>
+                <Image x:Name="accelYImage" HorizontalAlignment="Left" Height="15" Margin="0,5,0,0" VerticalAlignment="Top" Width="15"/>
+                <Image x:Name="accelYChart" HorizontalAlignment="Left" Height="15" Margin="0,5,0,0" VerticalAlignment="Top" Width="120"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy2" Content="AccelZ:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblAccelZ" Content="__az__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="38"/>
+                <Image x:Name="accelZImage" HorizontalAlignment="Left" Height="15" Margin="0,5,0,0" VerticalAlignment="Top" Width="15"/>
+                <Image x:Name="accelZChart" HorizontalAlignment="Left" Height="15" Margin="0,5,0,0" VerticalAlignment="Top" Width="120"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy3" Content="Compass:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblCompass" Content="__co__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="43"/>
+                <Image x:Name="CompassImage" HorizontalAlignment="Left" Height="14" Margin="0,6,0,0" VerticalAlignment="Top" Width="15"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy4" Content="Voltage:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblVoltage" Content="__vo__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="44"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy6" Content="MotorR:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblMotorR" Content="__mr__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy5" Content="MotorL:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblMotorL" Content="__ml__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy7" Content="Latest cmd:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblLatestCommand" Content="__lc__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="172" Margin="0,0,0,-6"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy8" Content="Please say:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblPleaseSay" Content="__ps__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="178" Margin="0,0,0,-6"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy9" Content="Object data:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="75" Margin="0,2,0,0"/>
+                <Label x:Name="lblObjectData" Content="__od__" HorizontalAlignment="Left" Height="20" VerticalAlignment="Top" Width="171" FontFamily="Consolas" FontSize="8"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+
+</Window>
