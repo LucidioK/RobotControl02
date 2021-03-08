@@ -1,8 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace RobotControl.ClassLibrary
 {
-    public interface IImageRecognitionFromCamera
+    public interface IImageRecognitionFromCamera : IDisposable
     {
         Task<ImageRecognitionFromCameraResult> GetAsync();
         Task StartAsync();

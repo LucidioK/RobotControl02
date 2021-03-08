@@ -40,18 +40,29 @@ namespace RobotControl.ClassLibrary
             onnxModelConfigurator = new OnnxModelConfigurator(tinyYoloModel);
             onnxOutputParser = new OnnxOutputParser(tinyYoloModel);
             tinyYoloPredictionEngine = onnxModelConfigurator.GetMlNetPredictionEngine<TinyYoloPrediction>();
+            OpenVideoCapture();
+        });
+
+        private void OpenVideoCapture()
+        {
             videoCapture = new VideoCapture(parameters.CameraId);
             videoCapture.Open(parameters.CameraId);
-        });
+        }
 
         public async Task<ImageRecognitionFromCameraResult> GetAsync() => await Task.Run(() =>
         {
             var frame = new Mat();
-            var result = new ImageRecognitionFromCameraResult { HasData = false };
+            var result = new ImageRecognitionFromCameraResult 
+            { 
+                HasData = false,
+                ImageRecognitionFromCamera = this,
+            };
+
             for (int i = 0; i < 4 && !result.HasData && videoCapture.Read(frame); i++)
             {
-                var bitmap = BitmapConverter.ToBitmap(frame.Flip(FlipMode.Y));
-                var prediction = tinyYoloPredictionEngine.Predict(new ImageInputData { Image = bitmap });
+                result.Bitmap = BitmapConverter.ToBitmap(frame.Flip(FlipMode.Y));
+
+                var prediction = tinyYoloPredictionEngine.Predict(new ImageInputData { Image = result.Bitmap });
                 var labels = prediction.PredictedLabels;
                 var boundingBoxes = onnxOutputParser.ParseOutputs(labels);
                 var filteredBoxes = onnxOutputParser.FilterBoundingBoxes(boundingBoxes, 5, 0.5f);
@@ -68,18 +79,22 @@ namespace RobotControl.ClassLibrary
 
                 var highestConfidence = filteredBoxes.Select(b => b.Confidence).Max();
                 var highestConfidenceBox = filteredBoxes.First(b => b.Confidence == highestConfidence);
-                HighlightDetectedObject(bitmap, highestConfidenceBox);
-                var bbdfb = BoundingBoxDeltaFromBitmap.FromBitmap(bitmap, highestConfidenceBox);
-                result = new ImageRecognitionFromCameraResult
-                {
-                    HasData = true,
-                    Bitmap = bitmap,
-                    XDeltaProportionFromBitmapCenter = bbdfb.XDeltaProportionFromBitmapCenter
-                };
+                HighlightDetectedObject(result.Bitmap, highestConfidenceBox);
+                var bbdfb = BoundingBoxDeltaFromBitmap.FromBitmap(result.Bitmap, highestConfidenceBox);
+                result.HasData = true;
+
+                result.XDeltaProportionFromBitmapCenter = bbdfb.XDeltaProportionFromBitmapCenter;
+                result.Label = highestConfidenceBox.Label;
             }
 
             return result;
         });
+
+        public void Dispose()
+        {
+            videoCapture?.Dispose();
+            tinyYoloPredictionEngine?.Dispose();
+        }
 
         private static void HighlightDetectedObject(Bitmap bitmap, BoundingBox box)
         {

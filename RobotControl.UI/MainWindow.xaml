@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:RobotControl.UI"
         mc:Ignorable="d"
         Title="MainWindow" Height="504" Width="800">
+
     <Grid Margin="5,5,5,5">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150"/>
@@ -28,6 +29,7 @@
                 <ComboBoxItem Content="230400"                  />
             </ComboBox>
             <CheckBox x:Name="scanForObjects" Content="Detect Objects" Margin="5,5,5,5" IsChecked="False" Checked="scanForObjects_Checked"/>
+            <CheckBox x:Name="lurchChk" Content="Lurch" Margin="5,5,5,5" IsChecked="{Binding PleaseLurch}" />
             <Label x:Name="label" Content="Objects to detect:" Margin="5,5,5,5" />
             <StackPanel Grid.Column="0" Margin="5,5,5,5" Orientation="Horizontal">
                 <ComboBox x:Name="objectsToDetectComboBox" Margin="5,0,5,0" Width="100" SelectionChanged="objectsToDetectComboBox_SelectionChanged">
@@ -52,7 +54,8 @@
                     <CheckBox Content="Train"       Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
                     <CheckBox Content="Tvmonitor"   Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
                 </ComboBox>
-                <Button x:Name="startStop" Content="Start" Click="startStop_ClickAsync" IsEnabled="False"/>
+                <Button x:Name="startStop" Content="Start" IsEnabled="False" UseLayoutRounding="True" Click="startStop_Click" />
+
             </StackPanel>
             <Image x:Name="objectDetectionImage" Margin="5,5,5,5" Height="152"  />
 
@@ -61,27 +64,27 @@
             <Label  Content="Configuration:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Bottom" />
             <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFEFFBFA">
                 <Label  Content="L Multiplier" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <TextBox x:Name="LMult" Width="32" Margin="5,5,5,5" Text="1.00"/>
+                <TextBox x:Name="LMult" Width="32" Margin="5,5,5,5" Text="1.00" TextChanged="LMult_TextChanged" />
                 <Label  Content="R Multiplier" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <TextBox x:Name="RMult" Width="32" Margin="5,5,5,5" Text="1.00" />
+                <TextBox x:Name="RMult" Width="32" Margin="5,5,5,5" Text="1.00" TextChanged="RMult_TextChanged" />
                 <Button x:Name="testMotors" Margin="5,5,5,5" Content="Test" Click="testMotors_Click" IsEnabled="False"  Width="70" />
             </StackPanel>
             <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFEFFBFA">
                 <Label  Content="Scan Power" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <TextBox x:Name="scanPower" Width="32" Margin="5,5,5,5" Text="120"/>
+                <TextBox x:Name="scanPower" Width="32" Margin="5,5,5,5" Text="120" TextChanged="scanPower_TextChanged"/>
                 <Label  Content="Lurch Pwr" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <TextBox x:Name="lurchPower" Width="32" Margin="5,5,5,5" Text="250" />
+                <TextBox x:Name="lurchPower" Width="32" Margin="5,5,5,5" Text="250" TextChanged="lurchPower_TextChanged" />
                 <Button x:Name="saveConfiguration"  Margin="5,5,5,5" Content="Save Config" Click="saveConfiguration_Click" FontFamily="Arial Narrow" Width="70" />
             </StackPanel>
 
             <Label  Content="Quick run:" Margin="0,5,0,0" HorizontalAlignment="Left" Height="26" VerticalAlignment="Bottom" />
             <StackPanel Grid.Column="1" Margin="5,5,5,0" Orientation="Horizontal" Background="#FFEFFBEF">
                 <Label  Content="L Power" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <TextBox x:Name="LPower" Width="32" Margin="5,5,5,5" Text="200"/>
+                <TextBox x:Name="LPower" Width="32" Margin="5,5,5,5" Text="200" TextChanged="LPower_TextChanged" />
                 <Label  Content="R Power" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <TextBox x:Name="RPower" Width="32" Margin="5,5,5,5" Text="200" />
+                <TextBox x:Name="RPower" Width="32" Margin="5,5,5,5" Text="200" TextChanged="RPower_TextChanged" />
                 <Label  Content="Time (ms)" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <TextBox x:Name="TimeToRun" Width="32" Margin="5,5,5,5" Text="1000" />
+                <TextBox x:Name="TimeToRun" Width="32" Margin="5,5,5,5" Text="1000" TextChanged="TimeToRun_TextChanged" />
                 <Button x:Name="runMotors" Width="32" Margin="5,5,5,5" Content="Run" IsEnabled="False" Click="runMotors_Click" />
             </StackPanel>
 
@@ -111,19 +114,21 @@
             <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
                 <Label x:Name="label1_Copy3" Content="Compass:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
                 <Label x:Name="lblCompass" Content="__co__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="43"/>
+                <Label x:Name="lblCompassPointingTo" Content="{Binding CompassPointingTo}" Height="26" VerticalAlignment="Top" Width="34" />
                 <Image x:Name="CompassImage" HorizontalAlignment="Left" Height="14" Margin="0,6,0,0" VerticalAlignment="Top" Width="15"/>
+                <Button x:Name="btnCalibrateCompass" Content="Calibrate compass" Width="170" Click="btnCalibrateCompass_Click" />
             </StackPanel>
             <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
                 <Label x:Name="label1_Copy4" Content="Voltage:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <Label x:Name="lblVoltage" Content="__vo__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="44"/>
-            </StackPanel>
-            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
-                <Label x:Name="label1_Copy6" Content="MotorR:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <Label x:Name="lblMotorR" Content="__mr__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblVoltage" Content="__vo__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="44" />
             </StackPanel>
             <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
                 <Label x:Name="label1_Copy5" Content="MotorL:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
-                <Label x:Name="lblMotorL" Content="__ml__" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblMotorL" Content="{Binding CurrentL, Mode=OneWay}" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
+                <Label x:Name="label1_Copy6" Content="MotorR:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>
+                <Label x:Name="lblMotorR" Content="{Binding CurrentR, Mode=OneWay}" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"  />
             </StackPanel>
             <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" Background="#FFF7F8D2">
                 <Label x:Name="label1_Copy7" Content="Latest cmd:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="70"/>

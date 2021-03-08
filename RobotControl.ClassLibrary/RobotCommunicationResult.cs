@@ -4,8 +4,11 @@ namespace RobotControl.ClassLibrary
 {
     public class RobotCommunicationResult
     {
+        [JsonIgnore]
+        public static string NoData => "NODATA";
+
         [JsonProperty("dataType")]
-        public string DataType { get; set; } = "NODATA";
+        public string DataType { get; set; } = NoData;
 
         [JsonProperty("state")]
         public string State { get; set; }
@@ -36,5 +39,8 @@ namespace RobotControl.ClassLibrary
 
         [JsonProperty("status")]
         public string Status { get; set; }
+
+        [JsonIgnore]
+        public IRobotCommunication RobotCommunication { get; set; }
     }
 }

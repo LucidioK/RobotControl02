@@ -48,6 +48,7 @@ bool                           magOK   = false;
 
 String outStatus;
 int lPower = 0, rPower = 0;
+float currentDistanceInCentimeters = 0;
 String noneStr = "NONE", movnStr = "MOVN", caliStr = "CALI", stopStr = "STOP", unknStr = "UNKN";
 String getStateName()
 {
@@ -68,7 +69,7 @@ void controlMotors(int l, int r)
     Serial.println("Stop!");
     motors.stop();
   }
-  else if (l == r)
+/*  else if (l == r)
   {
     Serial.print("Same speed");
     if (l > 0) 
@@ -82,11 +83,11 @@ void controlMotors(int l, int r)
       motors.backward(); 
     }
     Serial.println(l);
-    motors.setSpeed(l);
-  }
+    motors.setSpeed(abs(l));
+  }*/
   else
   {
-    Serial.print("Different speeds");
+    Serial.print("Move!");
     if (l > 0) 
     {
       Serial.print(" forwardA ");
@@ -99,7 +100,7 @@ void controlMotors(int l, int r)
     }
     
     Serial.print(l);
-    motors.setSpeedA(l);
+    motors.setSpeedA(abs(l));
     
     if (r > 0) 
     { 
@@ -112,8 +113,8 @@ void controlMotors(int l, int r)
       motors.backwardB();
     }
     Serial.print(r);
-    motors.setSpeedB(r);  
-    Serial.print("");
+    motors.setSpeedB(abs(r));  
+    Serial.println("");
   }
 }
 
@@ -282,7 +283,7 @@ void sendSensorValues()
 
   sv += fltRep("compass", getCompassHeading());
 
-  sv += fltRep("distance", distance.readRangeContinuousMillimeters() / 10);
+  sv += fltRep("distance", currentDistanceInCentimeters);
   sv += fltRep("voltage", voltageReader.Get());
   sv += strRep("status", outStatus);
   sv.remove(sv.length() -1);
@@ -348,5 +349,11 @@ void setup()
 void loop() 
 {
   outStatus = "";
+  currentDistanceInCentimeters = distance.readRangeContinuousMillimeters() / 10; 
+  if (currentDistanceInCentimeters < 15 && (lPower != 0 || rPower != 0))
+  {
+    controlMotors(0, 0);
+  }
+  
   readAndDispatchCommands();
 }

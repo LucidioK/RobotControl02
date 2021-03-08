@@ -1,8 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace RobotControl.ClassLibrary
 {
-    public interface IRobotCommunication
+    public interface IRobotCommunication : IDisposable
     {
         Task<RobotCommunicationResult> ReadAsync();
         Task SetMotorsAsync(int l, int r, int timeMiliseconds = -1);

@@ -27,7 +27,7 @@ namespace RobotControl.ClassLibrary
                     serialPort = new SerialPort($"COM{j}", parameters.BaudRate);
                     // this seems to be important for Arduino:
                     serialPort.RtsEnable = true;
-                    serialPort.ReadTimeout = 5000;
+                    serialPort.ReadTimeout = 200;
                     bool shouldContinueTryingToOpen = true;
                     for (var k = 0; !serialPort.IsOpen && k < 8 && shouldContinueTryingToOpen; k++)
                     {
@@ -66,12 +66,29 @@ namespace RobotControl.ClassLibrary
             {
                 serialPort.ReadExisting();
                 serialPort.WriteLine("{'operation':'readsensors'}");
-                var json = serialPort.ReadLine();
+                string json = string.Empty;
                 try
                 {
-                    return JsonConvert.DeserializeObject<RobotCommunicationResult>(json);
+                    json = serialPort.ReadLine();
                 }
-                catch(JsonReaderException)
+                catch (TimeoutException)
+                {
+                    System.Diagnostics.Debug.WriteLine("-->SerialPortImpl.SerialReadThread TIMEOUT");
+                    Thread.Sleep(10);
+                    continue;
+                }
+
+                try
+                {
+                    var result = JsonConvert.DeserializeObject<RobotCommunicationResult>(json);
+                    // To compensate that the sensor is upside down...
+                    result.AccelX *= -1;
+                    result.AccelY *= -1;
+                    result.AccelZ *= -1;
+                    result.RobotCommunication = this;
+                    return result;
+                }
+                catch(Exception)
                 {
                     System.Diagnostics.Debug.WriteLine($"-->SerialPortImpl.ReadAsync bad json, will try again: {json}");
                     Thread.Sleep(10);
@@ -99,5 +116,10 @@ namespace RobotControl.ClassLibrary
         {
             serialPort.Write($"{{'operation':'stop'}}");
         });
+
+        public void Dispose()
+        {
+            serialPort?.Close();
+        }
     }
 }
