@@ -13,7 +13,10 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0" Orientation="Vertical">
-
+            <CheckBox x:Name="UseCameraURLCheckbox" Content="Use camera URL" IsChecked="{Binding UseCameraURL}" />
+            <Label  Content="Camera URL:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" IsEnabled="{Binding UseCameraURL}" />
+            <TextBox x:Name="CameraURL" Margin="5,5,5,5" Text="http://10.0.0.95:8080/video" TextChanged="LMult_TextChanged" FontFamily="Consolas" FontSize="9" FontStretch="ExtraCondensed" FontWeight="Light" IsEnabled="{Binding UseCameraURL}" />
+            <ComboBox x:Name="cameraComboBox" Margin="5,5,5,5"  IsEnabled="{Binding UseCameraCombo}" />
             <CheckBox x:Name="nextTimeStartWithCurrentSettings" Content="Start with this data" Margin="5,5,5,5" />
             <CheckBox x:Name="enableAudioCheckBox" Content="Enable Audio" Margin="5,5,5,5" IsChecked="True"/>
             <Label x:Name="label2" Content="Serial port speed:" Margin="5,5,5,5" />

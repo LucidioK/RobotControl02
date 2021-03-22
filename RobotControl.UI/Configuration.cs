@@ -18,5 +18,6 @@ namespace RobotControl.UI
         public bool     PleaseLurch          { get; set; } = true;
         public float CompassReadingNorth { get; internal set; } = 0;
         public float CompassReadingSouth { get; internal set; } = 180;
+        public bool UseCameraURL { get; internal set; }
     }
 }

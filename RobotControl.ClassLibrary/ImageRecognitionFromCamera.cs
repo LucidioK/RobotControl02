@@ -45,47 +45,53 @@ namespace RobotControl.ClassLibrary
 
         private void OpenVideoCapture()
         {
-            videoCapture = new VideoCapture(parameters.CameraId);
-            videoCapture.Open(parameters.CameraId);
+            if (string.IsNullOrEmpty(parameters.CameraUrl))
+            {
+                videoCapture = new VideoCapture(parameters.CameraId);
+                videoCapture.Open(parameters.CameraId);
+            }
+            else
+            {
+                videoCapture = new VideoCapture(parameters.CameraUrl);
+                videoCapture.Open(parameters.CameraUrl);
+            }
         }
 
         public async Task<ImageRecognitionFromCameraResult> GetAsync() => await Task.Run(() =>
         {
             var frame = new Mat();
-            var result = new ImageRecognitionFromCameraResult 
-            { 
+            var result = new ImageRecognitionFromCameraResult
+            {
                 HasData = false,
                 ImageRecognitionFromCamera = this,
             };
 
-            for (int i = 0; i < 4 && !result.HasData && videoCapture.Read(frame); i++)
+            videoCapture.Read(frame);
+
+            result.Bitmap = BitmapConverter.ToBitmap(frame.Flip(FlipMode.Y));
+            var prediction = tinyYoloPredictionEngine.Predict(new ImageInputData { Image = result.Bitmap });
+            var labels = prediction.PredictedLabels;
+            var boundingBoxes = onnxOutputParser.ParseOutputs(labels);
+            var filteredBoxes = onnxOutputParser.FilterBoundingBoxes(boundingBoxes, 5, 0.5f);
+            if (filteredBoxes.Count == 0)
             {
-                result.Bitmap = BitmapConverter.ToBitmap(frame.Flip(FlipMode.Y));
-
-                var prediction = tinyYoloPredictionEngine.Predict(new ImageInputData { Image = result.Bitmap });
-                var labels = prediction.PredictedLabels;
-                var boundingBoxes = onnxOutputParser.ParseOutputs(labels);
-                var filteredBoxes = onnxOutputParser.FilterBoundingBoxes(boundingBoxes, 5, 0.5f);
-                if (filteredBoxes.Count == 0)
-                {
-                    continue;
-                }
-
-                filteredBoxes = filteredBoxes.Where(b => labelsOfObjectsToDetect.Any(l => l.Equals(b.Label, StringComparison.InvariantCultureIgnoreCase))).ToList();
-                if (filteredBoxes.Count == 0)
-                {
-                    continue;
-                }
-
-                var highestConfidence = filteredBoxes.Select(b => b.Confidence).Max();
-                var highestConfidenceBox = filteredBoxes.First(b => b.Confidence == highestConfidence);
-                HighlightDetectedObject(result.Bitmap, highestConfidenceBox);
-                var bbdfb = BoundingBoxDeltaFromBitmap.FromBitmap(result.Bitmap, highestConfidenceBox);
-                result.HasData = true;
-
-                result.XDeltaProportionFromBitmapCenter = bbdfb.XDeltaProportionFromBitmapCenter;
-                result.Label = highestConfidenceBox.Label;
+                return result;
             }
+
+            filteredBoxes = filteredBoxes.Where(b => labelsOfObjectsToDetect.Any(l => l.Equals(b.Label, StringComparison.InvariantCultureIgnoreCase))).ToList();
+            if (filteredBoxes.Count == 0)
+            {
+                return result;
+            }
+
+            var highestConfidence = filteredBoxes.Select(b => b.Confidence).Max();
+            var highestConfidenceBox = filteredBoxes.First(b => b.Confidence == highestConfidence);
+            HighlightDetectedObject(result.Bitmap, highestConfidenceBox);
+            var bbdfb = BoundingBoxDeltaFromBitmap.FromBitmap(result.Bitmap, highestConfidenceBox);
+            result.HasData = true;
+
+            result.XDeltaProportionFromBitmapCenter = bbdfb.XDeltaProportionFromBitmapCenter;
+            result.Label = highestConfidenceBox.Label;
 
             return result;
         });

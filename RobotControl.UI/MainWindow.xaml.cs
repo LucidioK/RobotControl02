@@ -17,6 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel;
 using System.Windows.Threading;
 using System.Linq;
+using System.Management;
 
 namespace RobotControl.UI
 {
@@ -85,7 +86,30 @@ namespace RobotControl.UI
             }
         }
 
+        public bool UseCameraURL
+        {
+            get => configuration.UseCameraURL;
+            set
+            {
+                configuration.UseCameraURL = value;
+                UseCameraCombo = !value;
+                NotifyPropertyChanged(nameof(UseCameraURL));
+            }
+        }
+
+        public bool UseCameraCombo
+        {
+            get => useCameraCombo; 
+            set 
+            { 
+                useCameraCombo = value;
+                NotifyPropertyChanged(nameof(UseCameraCombo));
+            }
+        }
+
+
         private string[] CompassPointingToValues = { "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
+        private bool useCameraCombo;
 
         public string CompassPointingTo
         {
@@ -121,12 +145,36 @@ namespace RobotControl.UI
             base.OnInitialized(e);
             Dispatcher.Invoke(() =>
             {
+                cameraComboBox.Items.Clear();
+                GetAllConnectedCameras().ForEach(c => cameraComboBox.Items.Add(c));
                 speechSynthesizer = new SpeechSynthesizer();
                 PopulateConfigurationData();
                 HandleConfigurationData();
             });
         }
 
+        public static List<string> GetAllConnectedCameras()
+        {
+            var cameraNames = new List<string>();
+            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE (PNPClass = 'Image' OR PNPClass = 'Camera' OR Caption like 'Iriun WebCam')"))
+            {
+                foreach (var device in searcher.Get())
+                {
+                    if (device == null || device["Caption"] == null)
+                    { 
+                        continue; 
+                    }
+
+                    string caption = device["Caption"].ToString();
+                    if (!cameraNames.Contains(caption))
+                    {
+                        cameraNames.Add(caption);
+                    }
+                }
+            }
+
+            return cameraNames;
+        }
         private void NotifyPropertyChanged(String propertyName)
         {
             if (PropertyChanged != null)
@@ -272,24 +320,27 @@ namespace RobotControl.UI
 
         private void saveConfiguration_Click(object sender, RoutedEventArgs e) => SaveConfigurationData();
 
+#if false
         private static async void WorkerThreadProc(object obj)
         {
             var thisWindow = (MainWindow)obj;
+            int baudRate = 0, cameraId = 0;
+            await thisWindow.Dispatcher.InvokeAsync(() =>
+            {
+                baudRate = int.Parse(thisWindow.baudRateComboBox.Text);
+                cameraId = Math.Max(0, thisWindow.cameraComboBox.SelectedIndex);
+            });
 
             ImageRecognitionFromCameraParameters ip = new ImageRecognitionFromCameraParameters
             {
                 OnnxFilePath = "TinyYolo2_model.onnx",
                 LabelsOfObjectsToDetect = thisWindow.labelsOfObjectsToDetect,
-                CameraId = 0,
+                CameraId = cameraId,
             };
-
-            int baudRate = 0;
-            await thisWindow.Dispatcher.InvokeAsync(() => baudRate = int.Parse(thisWindow.baudRateComboBox.Text));
             RobotCommunicationParameters rc = new RobotCommunicationParameters
             {
                 BaudRate = baudRate
             };
-
             using (var imageRecognitionFromCamera = ClassFactory.CreateImageRecognitionFromCamera(ip))
             {
                 using (var robotCommunication = ClassFactory.CreateRobotCommunication(rc))
@@ -319,11 +370,57 @@ namespace RobotControl.UI
                 }
             }
         }
+#else
+        private static async void WorkerThreadProc(object obj)
+        {
+            var thisWindow = (MainWindow)obj;
+            int baudRate = 0, cameraId = 0;
+            string cameraUrl = "";
+            await thisWindow.Dispatcher.InvokeAsync(() =>
+            {
+                baudRate = int.Parse(thisWindow.baudRateComboBox.Text);
+                cameraId = Math.Max(0, thisWindow.cameraComboBox.SelectedIndex);
+                cameraUrl = thisWindow.CameraURL.Text;
+            });
 
+            ImageRecognitionFromCameraParameters ip = new ImageRecognitionFromCameraParameters
+            {
+                OnnxFilePath = "TinyYolo2_model.onnx",
+                LabelsOfObjectsToDetect = thisWindow.labelsOfObjectsToDetect,
+                CameraId = cameraId,
+                CameraUrl = cameraUrl,
+            };
+
+            using (var imageRecognitionFromCamera = ClassFactory.CreateImageRecognitionFromCamera(ip))
+            {
+                    await imageRecognitionFromCamera.StartAsync();
+
+                    await thisWindow.HandleImageRecognitionFromCameraResultAsync(
+                        await imageRecognitionFromCamera.GetAsync(), null);
+
+                    while (!thisWindow.cancellationToken.IsCancellationRequested)
+                    {
+                        var start = DateTime.Now;
+
+                        var imageData = await imageRecognitionFromCamera.GetAsync();
+                        var afterGetImage = DateTime.Now;
+                        await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, null);
+                        var afterHandlingImage = DateTime.Now;
+                        var elapsedTotal = (int)(afterHandlingImage - start).TotalMilliseconds;
+                        var elapsedGetImage = (int)(afterGetImage - start).TotalMilliseconds;
+                        var elapsedHandlingImage = (int)(afterHandlingImage - afterGetImage).TotalMilliseconds;
+                        await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = $"GetImage:{elapsedGetImage} HandleImg:{elapsedHandlingImage} Total:{elapsedTotal}");
+                    }
+                
+            }
+        }
+
+#endif
         private async Task HandleImageRecognitionFromCameraResultAsync(
             ImageRecognitionFromCameraResult imageData,
             IRobotCommunication robotCommunication)
         {
+#if false
             if (imageData.HasData)
             {
 
@@ -355,7 +452,7 @@ namespace RobotControl.UI
             {
                 await ScanRightAsync(robotCommunication);
             }
-
+#endif
             await Dispatcher.InvokeAsync(() =>
                 objectDetectionImage.Source = Utilities.BitmapToBitmapImage(imageData.Bitmap));
         }
