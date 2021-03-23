@@ -380,7 +380,7 @@ namespace RobotControl.UI
             {
                 baudRate = int.Parse(thisWindow.baudRateComboBox.Text);
                 cameraId = Math.Max(0, thisWindow.cameraComboBox.SelectedIndex);
-                cameraUrl = thisWindow.CameraURL.Text;
+                cameraUrl = thisWindow.UseCameraURL ? thisWindow.CameraURL.Text : "";
             });
 
             ImageRecognitionFromCameraParameters ip = new ImageRecognitionFromCameraParameters
@@ -620,13 +620,13 @@ namespace RobotControl.UI
 
         }
 
-        private void scanPower_TextChanged(object sender, TextChangedEventArgs e)  { try { scanPowerValue = int.Parse(scanPower.Text); } catch(Exception){}}
-        private void lurchPower_TextChanged(object sender, TextChangedEventArgs e) { try { lurchPowerValue = int.Parse(lurchPower.Text); } catch(Exception){}}
-        private void LMult_TextChanged(object sender, TextChangedEventArgs e)      { try { lMultValue = float.Parse(LMult.Text); } catch(Exception){}}
-        private void RMult_TextChanged(object sender, TextChangedEventArgs e)      { try { rMultValue = float.Parse(RMult.Text); } catch(Exception){}}
-        private void LPower_TextChanged(object sender, TextChangedEventArgs e)     { try { lPowerValue = int.Parse(LPower.Text); } catch(Exception){}}
-        private void RPower_TextChanged(object sender, TextChangedEventArgs e)     { try { rPowerValue = int.Parse(RPower.Text); } catch(Exception){}}
-        private void TimeToRun_TextChanged(object sender, TextChangedEventArgs e)  { try { timeToRunValue = int.Parse(TimeToRun.Text); } catch(Exception){}}
+        private void scanPower_TextChanged(object sender, TextChangedEventArgs e)  { try { scanPowerValue  = scanPower  == null ? 0 : int.Parse(scanPower.Text);  } catch(Exception){}}
+        private void lurchPower_TextChanged(object sender, TextChangedEventArgs e) { try { lurchPowerValue = lurchPower == null ? 0 : int.Parse(lurchPower.Text); } catch(Exception){}}
+        private void LMult_TextChanged(object sender, TextChangedEventArgs e)      { try { lMultValue      = LMult      == null ? 0 : float.Parse(LMult.Text);    } catch(Exception){}}
+        private void RMult_TextChanged(object sender, TextChangedEventArgs e)      { try { rMultValue      = RMult      == null ? 0 : float.Parse(RMult.Text);    } catch(Exception){}}
+        private void LPower_TextChanged(object sender, TextChangedEventArgs e)     { try { lPowerValue     = LPower     == null ? 0 : int.Parse(LPower.Text);     } catch(Exception){}}
+        private void RPower_TextChanged(object sender, TextChangedEventArgs e)     { try { rPowerValue     = RPower     == null ? 0 : int.Parse(RPower.Text);     } catch(Exception){}}
+        private void TimeToRun_TextChanged(object sender, TextChangedEventArgs e)  { try { timeToRunValue  = TimeToRun  == null ? 0 : int.Parse(TimeToRun.Text);  } catch(Exception){}}
 
         private async void btnCalibrateCompass_Click(object sender, RoutedEventArgs e) =>
             await Task.Run(() => InvokeLockedExec(async () =>

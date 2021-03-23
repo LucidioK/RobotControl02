@@ -66,7 +66,15 @@ namespace RobotControl.ClassLibrary
                 ImageRecognitionFromCamera = this,
             };
 
-            videoCapture.Read(frame);
+            for (int i = 0; i < 8 && frame.Rows <= 0; i++)
+            {
+                videoCapture.Read(frame);
+            }
+
+            if (frame.Rows <= 0)
+            {
+                return result;
+            }
 
             result.Bitmap = BitmapConverter.ToBitmap(frame.Flip(FlipMode.Y));
             var prediction = tinyYoloPredictionEngine.Predict(new ImageInputData { Image = result.Bitmap });
@@ -235,7 +243,8 @@ namespace RobotControl.ClassLibrary
                         .Append(mlContext.Transforms.ApplyOnnxModel(
                             modelFile: onnxModel.ModelPath,
                             outputColumnName: onnxModel.ModelOutput,
-                            inputColumnName: onnxModel.ModelInput))
+                            inputColumnName: onnxModel.ModelInput,
+                            gpuDeviceId:0))
                         .Fit(
                             mlContext.Data.LoadFromEnumerable(new List<ImageInputData>()));
 
