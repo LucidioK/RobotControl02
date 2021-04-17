@@ -25,6 +25,7 @@ namespace RobotControl.ClassLibrary
         private PredictionEngine<ImageInputData, TinyYoloPrediction> tinyYoloPredictionEngine;
         private VideoCapture videoCapture;
         private string[] labelsOfObjectsToDetect;
+        private bool flipY;
 
         public ImageRecognitionFromCamera(ImageRecognitionFromCameraParameters parameters)
         {
@@ -49,11 +50,13 @@ namespace RobotControl.ClassLibrary
             {
                 videoCapture = new VideoCapture(parameters.CameraId);
                 videoCapture.Open(parameters.CameraId);
+                flipY = true;
             }
             else
             {
                 videoCapture = new VideoCapture(parameters.CameraUrl);
                 videoCapture.Open(parameters.CameraUrl);
+                flipY = false;
             }
         }
 
@@ -76,7 +79,8 @@ namespace RobotControl.ClassLibrary
                 return result;
             }
 
-            result.Bitmap = BitmapConverter.ToBitmap(frame.Flip(FlipMode.Y));
+            if (flipY) { frame.Flip(FlipMode.Y);  }
+            result.Bitmap = BitmapConverter.ToBitmap(frame);
             var prediction = tinyYoloPredictionEngine.Predict(new ImageInputData { Image = result.Bitmap });
             var labels = prediction.PredictedLabels;
             var boundingBoxes = onnxOutputParser.ParseOutputs(labels);

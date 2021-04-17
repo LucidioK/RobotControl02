@@ -18,6 +18,7 @@ using System.ComponentModel;
 using System.Windows.Threading;
 using System.Linq;
 using System.Management;
+using System.Text;
 
 namespace RobotControl.UI
 {
@@ -86,14 +87,14 @@ namespace RobotControl.UI
             }
         }
 
-        public bool UseCameraURL
+        public bool UseOnvifCamera
         {
-            get => configuration.UseCameraURL;
+            get => configuration.UseOnvifCamera;
             set
             {
-                configuration.UseCameraURL = value;
+                configuration.UseOnvifCamera = value;
                 UseCameraCombo = !value;
-                NotifyPropertyChanged(nameof(UseCameraURL));
+                NotifyPropertyChanged(nameof(UseOnvifCamera));
             }
         }
 
@@ -107,9 +108,39 @@ namespace RobotControl.UI
             }
         }
 
+        public string CameraIp
+        {
+            get { return cameraIp; }
+            set 
+            { 
+                cameraIp = value;
+                NotifyPropertyChanged(nameof(CameraIp));
+            }
+        }
+        public string UserName
+        {
+            get { return userName; }
+            set 
+            { 
+                userName = value;
+                NotifyPropertyChanged(nameof(UserName));
+            }
+        }
+        public string Password
+        {
+            get { return password; }
+            set 
+            { 
+                password = value;
+                NotifyPropertyChanged(nameof(Password));
+            }
+        }
 
         private string[] CompassPointingToValues = { "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
         private bool useCameraCombo;
+        private string cameraIp = "10.0.0.67";
+        private string userName = "admin";
+        private string password;
 
         public string CompassPointingTo
         {
@@ -371,16 +402,21 @@ namespace RobotControl.UI
             }
         }
 #else
+        private string GetOnvifCameraUrl()
+        {
+            var basicAuth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{this.UserName}:{this.Password}"));
+            return $"rtsp://{this.UserName}:{this.Password}@{this.CameraIp}/cam/realmonitor?channel=1&subtype=00&authbasic={basicAuth}";
+        }
         private static async void WorkerThreadProc(object obj)
         {
             var thisWindow = (MainWindow)obj;
             int baudRate = 0, cameraId = 0;
-            string cameraUrl = "";
+            string CameraUrl = "";
             await thisWindow.Dispatcher.InvokeAsync(() =>
             {
                 baudRate = int.Parse(thisWindow.baudRateComboBox.Text);
                 cameraId = Math.Max(0, thisWindow.cameraComboBox.SelectedIndex);
-                cameraUrl = thisWindow.UseCameraURL ? thisWindow.CameraURL.Text : "";
+                CameraUrl = thisWindow.UseOnvifCamera ? thisWindow.GetOnvifCameraUrl() : "";
             });
 
             ImageRecognitionFromCameraParameters ip = new ImageRecognitionFromCameraParameters
@@ -388,7 +424,7 @@ namespace RobotControl.UI
                 OnnxFilePath = "TinyYolo2_model.onnx",
                 LabelsOfObjectsToDetect = thisWindow.labelsOfObjectsToDetect,
                 CameraId = cameraId,
-                CameraUrl = cameraUrl,
+                CameraUrl = CameraUrl,
             };
 
             using (var imageRecognitionFromCamera = ClassFactory.CreateImageRecognitionFromCamera(ip))

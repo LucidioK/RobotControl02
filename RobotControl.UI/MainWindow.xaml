@@ -5,37 +5,52 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RobotControl.UI"
         mc:Ignorable="d"
-        Title="MainWindow" Height="504" Width="800">
+        Title="MainWindow" Height="504" Width="960">
 
     <Grid Margin="5,5,5,5">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="480"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0" Orientation="Vertical">
-            <CheckBox x:Name="UseCameraURLCheckbox" Content="Use camera URL" IsChecked="{Binding UseCameraURL}" />
-            <Label  Content="Camera URL:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" IsEnabled="{Binding UseCameraURL}" />
-            <TextBox x:Name="CameraURL" Margin="5,5,5,5" Text="http://10.0.0.95:8080/video" TextChanged="LMult_TextChanged" FontFamily="Consolas" FontSize="9" FontStretch="ExtraCondensed" FontWeight="Light" IsEnabled="{Binding UseCameraURL}" />
-            <ComboBox x:Name="cameraComboBox" Margin="5,5,5,5"  IsEnabled="{Binding UseCameraCombo}" />
+            <CheckBox x:Name="UseOnvifCameraCheckbox" Content="Onvif Camera" IsChecked="{Binding UseOnvifCamera}" />
+            <StackPanel Orientation="Horizontal">
+                <Label    Content="Username:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="80" IsEnabled="{Binding UseOnvifCamera}" />
+                <TextBox  x:Name="UserNameTxt" Margin="5,5,5,5" Text="{Binding UserName}" TextChanged="LMult_TextChanged" FontFamily="Consolas" FontSize="9" FontStretch="ExtraCondensed" FontWeight="Light" Width="150" IsEnabled="{Binding UseOnvifCamera}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Label    Content="Password:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="80" IsEnabled="{Binding UseOnvifCamera}" />
+                <TextBox  x:Name="PasswordTxt" Margin="5,5,5,5" Text="{Binding Password}" TextChanged="LMult_TextChanged" FontFamily="Consolas" FontSize="9" FontStretch="ExtraCondensed" FontWeight="Light" Width="150" IsEnabled="{Binding UseOnvifCamera}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Label    Content="IP:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="80" IsEnabled="{Binding UseOnvifCamera}" />
+                <TextBox  x:Name="CameraIPTxt" Margin="5,5,5,5" Text="{Binding CameraIp}" TextChanged="LMult_TextChanged" FontFamily="Consolas" FontSize="9" FontStretch="ExtraCondensed" FontWeight="Light" Width="150" IsEnabled="{Binding UseOnvifCamera}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Label    Content="Camera:" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="80" IsEnabled="{Binding UseCameraCombo}" />
+                <ComboBox x:Name="cameraComboBox" Margin="5,5,5,5"  Width="150" IsEnabled="{Binding UseCameraCombo}" />
+            </StackPanel>
             <CheckBox x:Name="nextTimeStartWithCurrentSettings" Content="Start with this data" Margin="5,5,5,5" />
             <CheckBox x:Name="enableAudioCheckBox" Content="Enable Audio" Margin="5,5,5,5" IsChecked="True"/>
-            <Label x:Name="label2" Content="Serial port speed:" Margin="5,5,5,5" />
-            <ComboBox x:Name="baudRateComboBox" Margin="5,5,5,5" >
-                <ComboBoxItem Content="2400"                    />
-                <ComboBoxItem Content="4800"                    />
-                <ComboBoxItem Content="9600"                    />
-                <ComboBoxItem Content="19200"                   />
-                <ComboBoxItem Content="38400"                   />
-                <ComboBoxItem Content="57600"                   />
-                <ComboBoxItem Content="74880"                   />
-                <ComboBoxItem Content="115200" IsSelected="True"/>
-                <ComboBoxItem Content="230400"                  />
-            </ComboBox>
-            <CheckBox x:Name="scanForObjects" Content="Detect Objects" Margin="5,5,5,5" IsChecked="False" Checked="scanForObjects_Checked"/>
-            <CheckBox x:Name="lurchChk" Content="Lurch" Margin="5,5,5,5" IsChecked="{Binding PleaseLurch}" />
-            <Label x:Name="label" Content="Objects to detect:" Margin="5,5,5,5" />
-            <StackPanel Grid.Column="0" Margin="5,5,5,5" Orientation="Horizontal">
-                <ComboBox x:Name="objectsToDetectComboBox" Margin="5,0,5,0" Width="100" SelectionChanged="objectsToDetectComboBox_SelectionChanged">
+            <StackPanel Orientation="Horizontal">
+                <Label x:Name="label2" Content="Serial baud:" Width="80" Margin="5,0,5,0" />
+                <ComboBox x:Name="baudRateComboBox" Margin="5,0,5,0"  Width="150">
+                    <ComboBoxItem Content="2400"                    />
+                    <ComboBoxItem Content="4800"                    />
+                    <ComboBoxItem Content="9600"                    />
+                    <ComboBoxItem Content="19200"                   />
+                    <ComboBoxItem Content="38400"                   />
+                    <ComboBoxItem Content="57600"                   />
+                    <ComboBoxItem Content="74880"                   />
+                    <ComboBoxItem Content="115200" IsSelected="True"/>
+                    <ComboBoxItem Content="230400"                  />
+                </ComboBox>
+            </StackPanel>
+            <CheckBox x:Name="scanForObjects" Content="Detect Objects" Margin="5,0,5,0" IsChecked="False" Checked="scanForObjects_Checked"/>
+            <CheckBox x:Name="lurchChk" Content="Lurch" Margin="5,0,5,0" IsChecked="{Binding PleaseLurch}" />
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <Label x:Name="label" Content="Detect:" Width="80" Margin="5,0,5,0" />
+                <ComboBox x:Name="objectsToDetectComboBox" Margin="5,0,5,0" Width="150" SelectionChanged="objectsToDetectComboBox_SelectionChanged">
                     <CheckBox Content="Aeroplane"   Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
                     <CheckBox Content="Bicycle"     Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
                     <CheckBox Content="Bird"        Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
@@ -57,10 +72,11 @@
                     <CheckBox Content="Train"       Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
                     <CheckBox Content="Tvmonitor"   Click="objectsToDetectSelectionChanged" Checked="objectsToDetectSelectionChanged" Unchecked="objectsToDetectSelectionChanged" />
                 </ComboBox>
-                <Button x:Name="startStop" Content="Start" IsEnabled="False" UseLayoutRounding="True" Click="startStop_Click" />
-
             </StackPanel>
-            <Image x:Name="objectDetectionImage" Margin="5,5,5,5" Height="152"  />
+
+            <Button x:Name="startStop" Content="Start" IsEnabled="False" UseLayoutRounding="True" Click="startStop_Click" Margin="5,5,5,5" />
+
+            <Image x:Name="objectDetectionImage" Margin="5,5,5,5" Height="400"  />
 
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Vertical">
