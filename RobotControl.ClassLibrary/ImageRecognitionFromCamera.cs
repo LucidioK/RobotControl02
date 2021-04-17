@@ -247,8 +247,9 @@ namespace RobotControl.ClassLibrary
                         .Append(mlContext.Transforms.ApplyOnnxModel(
                             modelFile: onnxModel.ModelPath,
                             outputColumnName: onnxModel.ModelOutput,
-                            inputColumnName: onnxModel.ModelInput,
-                            gpuDeviceId:0))
+                            inputColumnName: onnxModel.ModelInput/*,
+                            gpuDeviceId: 0,
+                            fallbackToCpu: true*/))
                         .Fit(
                             mlContext.Data.LoadFromEnumerable(new List<ImageInputData>()));
 
