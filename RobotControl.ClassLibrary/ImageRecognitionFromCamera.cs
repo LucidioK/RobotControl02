@@ -2,15 +2,14 @@
 using Microsoft.ML.Data;
 using Microsoft.ML.Transforms.Image;
 
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using OpenCvSharp;
-using OpenCvSharp.Extensions;
 using System.Threading.Tasks;
 
 namespace RobotControl.ClassLibrary
@@ -79,7 +78,7 @@ namespace RobotControl.ClassLibrary
                 return result;
             }
 
-            if (flipY) { frame.Flip(FlipMode.Y);  }
+            if (flipY) { frame.Flip(FlipMode.Y); }
             result.Bitmap = BitmapConverter.ToBitmap(frame);
             var prediction = tinyYoloPredictionEngine.Predict(new ImageInputData { Image = result.Bitmap });
             var labels = prediction.PredictedLabels;

@@ -1,9 +1,7 @@
-﻿using RobotControl.ClassLibrary;
-
-using System.Collections.Generic;
-
+﻿
 namespace RobotControl.UI
 {
+    using System.Collections.Generic;
     public class Configuration
     {
         public HashSet<string>

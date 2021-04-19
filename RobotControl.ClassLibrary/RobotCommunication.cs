@@ -1,9 +1,10 @@
-﻿using System;
-using System.Threading;
-using System.IO.Ports;
-using Newtonsoft.Json;
-using System.Threading.Tasks;
+﻿using Newtonsoft.Json;
+
+using System;
 using System.IO;
+using System.IO.Ports;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RobotControl.ClassLibrary
 {
@@ -31,21 +32,7 @@ namespace RobotControl.ClassLibrary
                     bool shouldContinueTryingToOpen = true;
                     for (var k = 0; !serialPort.IsOpen && k < 8 && shouldContinueTryingToOpen; k++)
                     {
-                        try
-                        {
-                            serialPort.Open();
-                            serialPort.ReadExisting();
-                        }
-                        catch (UnauthorizedAccessException)
-                        {
-                            System.Diagnostics.Debug.WriteLine("-->SerialPortImpl.GetSerialPort UnauthorizedAccessException, retrying");
-                            Thread.Sleep(100);
-                        }
-                        catch (FileNotFoundException)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"-->SerialPortImpl.GetSerialPort COM{j} does not exist, next!");
-                            shouldContinueTryingToOpen = false;
-                        }
+                        shouldContinueTryingToOpen = TryToOpenPort(j);
                     }
 
                     if (serialPort.IsOpen)
@@ -59,6 +46,29 @@ namespace RobotControl.ClassLibrary
 
             throw new Exception($"Cannot find SmartRobot02 COM port. Aborting.");
         });
+
+        private bool TryToOpenPort(int j)
+        {
+            bool shouldContinueTryingToOpen = true;
+            try
+            {
+                serialPort.Open();
+                serialPort.ReadExisting();
+                shouldContinueTryingToOpen = false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                System.Diagnostics.Debug.WriteLine("-->SerialPortImpl.GetSerialPort UnauthorizedAccessException, retrying");
+                Thread.Sleep(100);
+            }
+            catch (FileNotFoundException)
+            {
+                System.Diagnostics.Debug.WriteLine($"-->SerialPortImpl.GetSerialPort COM{j} does not exist, next!");
+                shouldContinueTryingToOpen = false;
+            }
+
+            return shouldContinueTryingToOpen;
+        }
 
         public async Task<RobotCommunicationResult> ReadAsync() => await Task.Run(() =>
         {
@@ -88,7 +98,7 @@ namespace RobotControl.ClassLibrary
                     result.RobotCommunication = this;
                     return result;
                 }
-                catch(Exception)
+                catch (Exception)
                 {
                     System.Diagnostics.Debug.WriteLine($"-->SerialPortImpl.ReadAsync bad json, will try again: {json}");
                     Thread.Sleep(10);

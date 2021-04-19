@@ -429,25 +429,28 @@ namespace RobotControl.UI
 
             using (var imageRecognitionFromCamera = ClassFactory.CreateImageRecognitionFromCamera(ip))
             {
-                    await imageRecognitionFromCamera.StartAsync();
+                await imageRecognitionFromCamera.StartAsync();
 
-                    await thisWindow.HandleImageRecognitionFromCameraResultAsync(
-                        await imageRecognitionFromCamera.GetAsync(), null);
+                await thisWindow.HandleImageRecognitionFromCameraResultAsync(
+                    await imageRecognitionFromCamera.GetAsync(), null);
 
-                    while (!thisWindow.cancellationToken.IsCancellationRequested)
-                    {
-                        var start = DateTime.Now;
+                UInt64 frameCounter = 0;
+                UInt64 elapsedAverage = 0;
+                while (!thisWindow.cancellationToken.IsCancellationRequested)
+                {
+                    var start = DateTime.Now;
 
-                        var imageData = await imageRecognitionFromCamera.GetAsync();
-                        var afterGetImage = DateTime.Now;
-                        await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, null);
-                        var afterHandlingImage = DateTime.Now;
-                        var elapsedTotal = (int)(afterHandlingImage - start).TotalMilliseconds;
-                        var elapsedGetImage = (int)(afterGetImage - start).TotalMilliseconds;
-                        var elapsedHandlingImage = (int)(afterHandlingImage - afterGetImage).TotalMilliseconds;
-                        await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = $"GetImage:{elapsedGetImage} HandleImg:{elapsedHandlingImage} Total:{elapsedTotal}");
-                    }
-                
+                    var imageData = await imageRecognitionFromCamera.GetAsync();
+                    var afterGetImage = DateTime.Now;
+                    await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, null);
+                    var afterHandlingImage = DateTime.Now;
+                    var elapsedTotal = (int)(afterHandlingImage - start).TotalMilliseconds;
+                    frameCounter++;
+                    elapsedAverage = (elapsedAverage * (frameCounter - 1) + (UInt64)elapsedTotal) / frameCounter;
+                    var elapsedGetImage = (int)(afterGetImage - start).TotalMilliseconds;
+                    var elapsedHandlingImage = (int)(afterHandlingImage - afterGetImage).TotalMilliseconds;
+                    await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = $"ElapsedAvg:{elapsedAverage} GetImage:{elapsedGetImage} HandleImg:{elapsedHandlingImage} Total:{elapsedTotal}");
+                }
             }
         }
 

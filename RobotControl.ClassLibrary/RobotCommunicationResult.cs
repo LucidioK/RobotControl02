@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json;
-
-namespace RobotControl.ClassLibrary
+﻿namespace RobotControl.ClassLibrary
 {
+    using Newtonsoft.Json;
+
     public class RobotCommunicationResult
     {
         [JsonIgnore]
@@ -11,34 +11,34 @@ namespace RobotControl.ClassLibrary
         public string DataType { get; set; } = NoData;
 
         [JsonProperty("state")]
-        public string State { get; set; }
+        public string State    { get; set; }
 
         [JsonProperty("l")]
-        public float L { get; set; }
+        public float L         { get; set; }
 
         [JsonProperty("r")]
-        public float R { get; set; }
+        public float R         { get; set; }
 
         [JsonProperty("accelX")]
-        public float AccelX { get; set; }
+        public float AccelX    { get; set; }
 
         [JsonProperty("accelY")]
-        public float AccelY { get; set; }
+        public float AccelY    { get; set; }
 
         [JsonProperty("accelZ")]
-        public float AccelZ { get; set; }
+        public float AccelZ    { get; set; }
 
         [JsonProperty("compass")]
-        public float Compass { get; set; }
+        public float Compass   { get; set; }
 
         [JsonProperty("distance")]
-        public float Distance { get; set; }
+        public float Distance  { get; set; }
 
         [JsonProperty("voltage")]
-        public float Voltage { get; set; }
+        public float Voltage   { get; set; }
 
         [JsonProperty("status")]
-        public string Status { get; set; }
+        public string Status   { get; set; }
 
         [JsonIgnore]
         public IRobotCommunication RobotCommunication { get; set; }

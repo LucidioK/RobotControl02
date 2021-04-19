@@ -1,25 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
-
-namespace RobotControl.UI
+﻿namespace RobotControl.UI
 {
+    using System.IO;
+    using System.Windows.Media.Imaging;
+
     static class Utilities
     {
         public static BitmapImage BitmapToBitmapImage(System.Drawing.Bitmap src)
         {
-            MemoryStream ms = new MemoryStream();
-            ((System.Drawing.Bitmap)src).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
-            BitmapImage image = new BitmapImage();
-            image.BeginInit();
+            var ms = new MemoryStream();
+            var im = new BitmapImage();
+            src.Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+            im.BeginInit();
             ms.Seek(0, SeekOrigin.Begin);
-            image.StreamSource = ms;
-            image.EndInit();
-            return image;
+            im.StreamSource = ms;
+            im.EndInit();
+            return im;
         }
 
         public static void UpdateImage(System.Windows.Controls.Image image, System.Drawing.Bitmap bitmap)
