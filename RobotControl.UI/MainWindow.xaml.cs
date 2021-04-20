@@ -100,9 +100,9 @@ namespace RobotControl.UI
 
         public bool UseCameraCombo
         {
-            get => useCameraCombo; 
-            set 
-            { 
+            get => useCameraCombo;
+            set
+            {
                 useCameraCombo = value;
                 NotifyPropertyChanged(nameof(UseCameraCombo));
             }
@@ -111,8 +111,8 @@ namespace RobotControl.UI
         public string CameraIp
         {
             get { return cameraIp; }
-            set 
-            { 
+            set
+            {
                 cameraIp = value;
                 NotifyPropertyChanged(nameof(CameraIp));
             }
@@ -120,8 +120,8 @@ namespace RobotControl.UI
         public string UserName
         {
             get { return userName; }
-            set 
-            { 
+            set
+            {
                 userName = value;
                 NotifyPropertyChanged(nameof(UserName));
             }
@@ -129,8 +129,8 @@ namespace RobotControl.UI
         public string Password
         {
             get { return password; }
-            set 
-            { 
+            set
+            {
                 password = value;
                 NotifyPropertyChanged(nameof(Password));
             }
@@ -192,8 +192,8 @@ namespace RobotControl.UI
                 foreach (var device in searcher.Get())
                 {
                     if (device == null || device["Caption"] == null)
-                    { 
-                        continue; 
+                    {
+                        continue;
                     }
 
                     string caption = device["Caption"].ToString();
@@ -429,27 +429,36 @@ namespace RobotControl.UI
 
             using (var imageRecognitionFromCamera = ClassFactory.CreateImageRecognitionFromCamera(ip))
             {
-                await imageRecognitionFromCamera.StartAsync();
-
-                await thisWindow.HandleImageRecognitionFromCameraResultAsync(
-                    await imageRecognitionFromCamera.GetAsync(), null);
-
-                UInt64 frameCounter = 0;
-                UInt64 elapsedAverage = 0;
-                while (!thisWindow.cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var start = DateTime.Now;
+                    await imageRecognitionFromCamera.StartAsync();
 
-                    var imageData = await imageRecognitionFromCamera.GetAsync();
-                    var afterGetImage = DateTime.Now;
-                    await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, null);
-                    var afterHandlingImage = DateTime.Now;
-                    var elapsedTotal = (int)(afterHandlingImage - start).TotalMilliseconds;
-                    frameCounter++;
-                    elapsedAverage = (elapsedAverage * (frameCounter - 1) + (UInt64)elapsedTotal) / frameCounter;
-                    var elapsedGetImage = (int)(afterGetImage - start).TotalMilliseconds;
-                    var elapsedHandlingImage = (int)(afterHandlingImage - afterGetImage).TotalMilliseconds;
-                    await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = $"ElapsedAvg:{elapsedAverage} GetImage:{elapsedGetImage} HandleImg:{elapsedHandlingImage} Total:{elapsedTotal}");
+                    await thisWindow.HandleImageRecognitionFromCameraResultAsync(
+                        await imageRecognitionFromCamera.GetAsync(), null);
+
+                    UInt64 frameCounter = 0;
+                    UInt64 elapsedAverage = 0;
+                    while (!thisWindow.cancellationToken.IsCancellationRequested)
+                    {
+                        var start = DateTime.Now;
+
+                        var imageData = await imageRecognitionFromCamera.GetAsync();
+                        var afterGetImage = DateTime.Now;
+                        await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, null);
+                        var afterHandlingImage = DateTime.Now;
+                        var elapsedTotal = (int)(afterHandlingImage - start).TotalMilliseconds;
+                        frameCounter++;
+                        elapsedAverage = (elapsedAverage * (frameCounter - 1) + (UInt64)elapsedTotal) / frameCounter;
+                        var elapsedGetImage = (int)(afterGetImage - start).TotalMilliseconds;
+                        var elapsedHandlingImage = (int)(afterHandlingImage - afterGetImage).TotalMilliseconds;
+                        await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = $"ElapsedAvg:{elapsedAverage} GetImage:{elapsedGetImage} HandleImg:{elapsedHandlingImage} Total:{elapsedTotal}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Exception ie;
+                    for (ie = ex; ie.InnerException != null; ie = ie.InnerException);
+                    MessageBox.Show($"{ie.Message}\n{ie.StackTrace}", "Exception");
                 }
             }
         }

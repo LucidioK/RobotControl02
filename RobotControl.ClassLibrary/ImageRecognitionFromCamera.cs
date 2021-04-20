@@ -471,13 +471,14 @@ namespace RobotControl.ClassLibrary
 
             public TinyYoloModel(string modelPath)
             {
+                var currentPath = Path.GetFullPath(".");
                 if (File.Exists(modelPath))
                 {
                     ModelPath = Path.GetFullPath(modelPath);
                 }
                 else
                 {
-                    throw new FileNotFoundException(modelPath);
+                    throw new FileNotFoundException($"Could not find {modelPath} on {currentPath}");
                 }
             }
         }
