@@ -55,6 +55,33 @@ namespace RobotControl.UI
 
         public event PropertyChangedEventHandler PropertyChanged;
         public Random Random = new Random(DateTime.Now.Millisecond);
+        public Configuration Configuration
+        {
+            get
+            {
+                if (configuration == null)
+                {
+                    if (File.Exists(this.configurationPath))
+                    {
+                        string config = File.ReadAllText(this.configurationPath);
+                        this.configuration = JsonConvert.DeserializeObject<Configuration>(config);
+                        var configurationProperties = new HashSet<string>(GetPropertyNames(configuration));
+                        GetPropertyNames(this)
+                            .Where(pn => configurationProperties.Contains(pn)).ToList()
+                            .ForEach(pn => this.GetType().GetProperty(pn)?.SetValue(this, Configuration.GetType().GetProperty(pn).GetValue(configuration)));
+                        this.GetType().GetProperties().Select(p => p.Name).ToList().ForEach(pn => NotifyPropertyChanged(pn));
+                    }
+                    else
+                    {
+                        this.configuration = new Configuration();
+                    }
+                }
+
+                return configuration;
+            }
+            set => configuration = value;
+        }        
+
         private string compassPointingTo;
         private float compassHeading;
         public int CurrentL
@@ -79,20 +106,20 @@ namespace RobotControl.UI
 
         public bool PleaseLurch
         {
-            get => configuration.PleaseLurch;
+            get => Configuration.PleaseLurch;
             set
             {
-                configuration.PleaseLurch = value;
+                Configuration.PleaseLurch = value;
                 NotifyPropertyChanged(nameof(PleaseLurch));
             }
         }
 
         public bool UseOnvifCamera
         {
-            get => configuration.UseOnvifCamera;
+            get => Configuration.UseOnvifCamera;
             set
             {
-                configuration.UseOnvifCamera = value;
+                Configuration.UseOnvifCamera = value;
                 UseCameraCombo = !value;
                 NotifyPropertyChanged(nameof(UseOnvifCamera));
             }
@@ -179,7 +206,6 @@ namespace RobotControl.UI
                 cameraComboBox.Items.Clear();
                 GetAllConnectedCameras().ForEach(c => cameraComboBox.Items.Add(c));
                 speechSynthesizer = new SpeechSynthesizer();
-                PopulateConfigurationData();
                 HandleConfigurationData();
             });
         }
@@ -284,58 +310,44 @@ namespace RobotControl.UI
         private void SaveConfigurationData() =>
             LockedExec(() =>
                 {
-                    this.configuration.EnableAudio = IsChecked(this.enableAudioCheckBox);
-                    this.configuration.ScanForObjects = IsChecked(this.scanForObjects);
-                    this.configuration.LeftMotorMultiplier = float.Parse(this.LMult.Text);
-                    this.configuration.RightMotorMultiplier = float.Parse(this.RMult.Text);
-                    this.configuration.SerialPortBaudrate = int.Parse(this.baudRateComboBox.Text);
-                    this.configuration.ScanPower = int.Parse(this.scanPower.Text);
-                    this.configuration.LurchPower = int.Parse(this.lurchPower.Text);
+                    this.Configuration.EnableAudio = IsChecked(this.enableAudioCheckBox);
+                    this.Configuration.ScanForObjects = IsChecked(this.scanForObjects);
+                    this.Configuration.LeftMotorMultiplier = float.Parse(this.LMult.Text);
+                    this.Configuration.RightMotorMultiplier = float.Parse(this.RMult.Text);
+                    this.Configuration.SerialPortBaudrate = int.Parse(this.baudRateComboBox.Text);
+                    this.Configuration.ScanPower = int.Parse(this.scanPower.Text);
+                    this.Configuration.LurchPower = int.Parse(this.lurchPower.Text);
 
-                    this.configuration.ObjectsToDetect.Clear();
+                    this.Configuration.ObjectsToDetect.Clear();
                     for (int i = 0; i < this.objectsToDetectComboBox.Items.Count; i++)
                     {
                         CheckBox checkBox = (CheckBox)this.objectsToDetectComboBox.Items[i];
                         if (IsChecked(checkBox))
                         {
-                            this.configuration.ObjectsToDetect.Add((string)checkBox.Content);
+                            this.Configuration.ObjectsToDetect.Add((string)checkBox.Content);
                         }
                     }
 
                     File.WriteAllText(this.configurationPath, JsonConvert.SerializeObject(this.configuration));
                 });
 
-        private void PopulateConfigurationData()
-        {
-            if (File.Exists(this.configurationPath))
-            {
-                string config = File.ReadAllText(this.configurationPath);
-                this.configuration = JsonConvert.DeserializeObject<Configuration>(config);
-                var configurationProperties = new HashSet<string>(GetPropertyNames(configuration));
-                GetPropertyNames(this)
-                    .Where(pn => configurationProperties.Contains(pn)).ToList()
-                    .ForEach(pn => this.GetType().GetProperty(pn)?.SetValue(this, configuration.GetType().GetProperty(pn).GetValue(configuration)));
-                this.GetType().GetProperties().Select(p => p.Name).ToList().ForEach(pn => NotifyPropertyChanged(pn));
-            }
-        }
-
         private List<string> GetPropertyNames(object o) => o.GetType().GetProperties().Select(p => p.Name).ToList();
 
         private void HandleConfigurationData()
         {
-            this.enableAudioCheckBox.IsChecked = this.configuration.EnableAudio;
-            this.scanForObjects.IsChecked = this.configuration.ScanForObjects;
-            this.LMult.Text = this.configuration.LeftMotorMultiplier.ToString("0.00");
-            this.RMult.Text = this.configuration.RightMotorMultiplier.ToString("0.00");
-            this.baudRateComboBox.SelectedValue = this.configuration.SerialPortBaudrate;
-            this.baudRateComboBox.Text = this.configuration.SerialPortBaudrate.ToString();
-            this.scanPower.Text = this.configuration.ScanPower.ToString();
-            this.lurchPower.Text = this.configuration.LurchPower.ToString();
+            this.enableAudioCheckBox.IsChecked = this.Configuration.EnableAudio;
+            this.scanForObjects.IsChecked = this.Configuration.ScanForObjects;
+            this.LMult.Text = this.Configuration.LeftMotorMultiplier.ToString("0.00");
+            this.RMult.Text = this.Configuration.RightMotorMultiplier.ToString("0.00");
+            this.baudRateComboBox.SelectedValue = this.Configuration.SerialPortBaudrate;
+            this.baudRateComboBox.Text = this.Configuration.SerialPortBaudrate.ToString();
+            this.scanPower.Text = this.Configuration.ScanPower.ToString();
+            this.lurchPower.Text = this.Configuration.LurchPower.ToString();
 
             for (int i = 0; i < this.objectsToDetectComboBox.Items.Count; i++)
             {
                 CheckBox checkBox = (CheckBox)this.objectsToDetectComboBox.Items[i];
-                checkBox.IsChecked = this.configuration.ObjectsToDetect.Contains((string)checkBox.Content);
+                checkBox.IsChecked = this.Configuration.ObjectsToDetect.Contains((string)checkBox.Content);
             }
         }
 
@@ -595,7 +607,7 @@ namespace RobotControl.UI
 
         private void DisplayCompass(System.Windows.Controls.Image compassImage, float heading)
         {
-            CompassHeading = heading / (180 / (configuration.CompassReadingSouth - configuration.CompassReadingNorth));
+            CompassHeading = heading / (180 / (Configuration.CompassReadingSouth - Configuration.CompassReadingNorth));
             var bitmap = new Bitmap((int)compassImage.Width, (int)compassImage.Height);
             var backgroundColor = new System.Drawing.SolidBrush(System.Drawing.Color.LightYellow);
 
@@ -690,11 +702,11 @@ namespace RobotControl.UI
                             btnCalibrateCompass.Content = "Point North, then click here";
                             break;
                         case "Point North, then click here":
-                            configuration.CompassReadingNorth = (await robotCommunication.ReadAsync()).Compass;
+                            Configuration.CompassReadingNorth = (await robotCommunication.ReadAsync()).Compass;
                             btnCalibrateCompass.Content = "Now point South, then click here";
                             break;
                         case "Now point South, then click here":
-                            configuration.CompassReadingSouth = (await robotCommunication.ReadAsync()).Compass;
+                            Configuration.CompassReadingSouth = (await robotCommunication.ReadAsync()).Compass;
                             btnCalibrateCompass.Content = "Done calibrating compass";
                             btnCalibrateCompass.IsEnabled = false;
                             SaveConfigurationData();
