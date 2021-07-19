@@ -7,6 +7,7 @@ namespace RobotControl.ClassLibrary
     {
         Task<RobotCommunicationResult> ReadAsync();
         Task SetMotorsAsync(int l, int r, int timeMiliseconds = -1);
+        Task WriteAsync(string s);
         Task StartAsync();
         Task StopMotorsAsync();
     }

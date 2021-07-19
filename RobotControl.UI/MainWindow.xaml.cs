@@ -51,7 +51,7 @@ namespace RobotControl.UI
         private Dictionary<string, DateTime> latestSay = new Dictionary<string, DateTime>();
         private int currentL;
         private int currentR;
-        private bool alreadyFoundScanPower = false;
+        private bool alreadyFoundScanPower = true;
 
         public event PropertyChangedEventHandler PropertyChanged;
         public Random Random = new Random(DateTime.Now.Millisecond);
@@ -185,7 +185,7 @@ namespace RobotControl.UI
             private set
             {
                 compassHeading = value;
-                int position = (int)(compassHeading + (360 / CompassPointingToValues.Length)) / (360 / CompassPointingToValues.Length);
+                int position = ((int)(compassHeading + (360 / CompassPointingToValues.Length)) / (360 / CompassPointingToValues.Length)) % CompassPointingToValues.Length;
                 CompassPointingTo = CompassPointingToValues[position];
             }
         }
@@ -363,7 +363,7 @@ namespace RobotControl.UI
 
         private void saveConfiguration_Click(object sender, RoutedEventArgs e) => SaveConfigurationData();
 
-#if false
+#if true
         private static async void WorkerThreadProc(object obj)
         {
             var thisWindow = (MainWindow)obj;
@@ -480,18 +480,18 @@ namespace RobotControl.UI
             ImageRecognitionFromCameraResult imageData,
             IRobotCommunication robotCommunication)
         {
-#if false
+#if true
             if (imageData.HasData)
             {
 
                 var objectPosition = imageData.XDeltaProportionFromBitmapCenter * 100;
                 if (objectPosition < -5) // object is to the left
                 {
-                    await SetMotorsAsync(robotCommunication, scanPowerValue, -scanPowerValue);
+                    await SetMotorsAsync(robotCommunication, -scanPowerValue, scanPowerValue);
                 }
                 else if (objectPosition > 5) // object is to the right
                 {
-                    await SetMotorsAsync(robotCommunication, -scanPowerValue, scanPowerValue);
+                    await SetMotorsAsync(robotCommunication, scanPowerValue, -scanPowerValue);
                 }
                 else // object is straight ahead, CHARGE!
                 {

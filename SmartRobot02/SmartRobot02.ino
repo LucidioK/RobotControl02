@@ -5,6 +5,8 @@
  * {'operation':'noserialoutput'}
  * {'operation':'motor','l':200,'r':200}
  * {'operation':'timedmotor','l':200,'r':200,'t':5000}
+ * {'operation':'normalserialoutput'}
+ * {'operation':'verboseserialoutput'}
  */
 #include <SPI.h>
 #include <ArduinoJson.h>
@@ -24,6 +26,11 @@ enum RobotStateEnum
   NOSERIALOUTPUT
 };
 
+enum SerialVerboseEnum
+{
+  NORMAL, NOSERIAL, VERBOSE
+};
+
 const unsigned int EN_A = 9;
 const unsigned int IN1_A = 8;
 const unsigned int IN2_A = 7;
@@ -36,6 +43,7 @@ const unsigned int EN_B = 3;
 L298NX2 motors(EN_A, IN1_A, IN2_A, EN_B, IN1_B, IN2_B);
 
 RobotStateEnum             robotState = NONE;
+SerialVerboseEnum          serialVerbose = NORMAL;
 VoltageReader              voltageReader    (A0, 47000, 33000);
 
 VL53L0X                        distance;
@@ -61,12 +69,27 @@ String getStateName()
   }
 }
 
+void verbose(String s)
+{
+  if (serialVerbose == VERBOSE)
+  {
+    if (s == "<NewLine>")
+    {
+      Serial.println("");
+    }
+    else
+    {
+      Serial.print(s);
+    }
+  }
+}
+
 void controlMotors(int l, int r)
 {
   lPower = l; rPower = r;
   if (l == 0 && r == 0)
   {
-    Serial.println("Stop!");
+    //Serial.println("Stop!");
     motors.stop();
   }
 /*  else if (l == r)
@@ -87,36 +110,37 @@ void controlMotors(int l, int r)
   }*/
   else
   {
-    Serial.print("Move!");
+    verbose("Move!");
     if (l > 0) 
     {
-      Serial.print(" forwardA ");
+      verbose(" forwardA ");
       motors.forwardA();
     }
     else 
     {
-      Serial.print(" backwardA ");
+      verbose(" backwardA ");
       motors.backwardA();
     }
     
-    Serial.print(l);
+    verbose(String(l));
     motors.setSpeedA(abs(l));
     
     if (r > 0) 
     { 
-      Serial.print(" forwardB ");
+      verbose(" forwardB ");
       motors.forwardB(); 
     }
     else 
     { 
-      Serial.print(" backwardB ");
+      verbose(" backwardB ");
       motors.backwardB();
     }
-    Serial.print(r);
+    verbose(String(r));
     motors.setSpeedB(abs(r));  
-    Serial.println("");
+    verbose("<NewLine>");
   }
 }
+
 
 void stop()
 {
@@ -185,8 +209,20 @@ void readAndDispatchCommands()
 
     if (operation == "noserialoutput")
     {
-      robotState = NOSERIALOUTPUT;
+      serialVerbose = NOSERIAL;
       return;
+    }
+
+    if (operation == "normalserialoutput")
+    {
+      serialVerbose = NORMAL;
+      return;      
+    }
+
+    if (operation == "verboseserialoutput")
+    {
+      serialVerbose = VERBOSE;
+      return;      
     }
 
     int l,r;
@@ -336,14 +372,17 @@ void setup()
   initializeAccel();
 
   stop();
-  Serial.println("Device is ready 20210301 1200");  
+  Serial.println("Device is ready 20210717 1741");  
   Serial.println("Accepted commands:");  
   Serial.println("{'operation':'id'}");
   Serial.println("{'operation':'readsensors'}");
   Serial.println("{'operation':'stop'}");
-  Serial.println("{'operation':'noserialoutput'}");
   Serial.println("{'operation':'motor','l':200,'r':200}");
   Serial.println("{'operation':'timedmotor','l':200,'r':200,'t':5000}  ");
+  Serial.println("{'operation':'timedmotor','l':200,'r':200,'t':5000}  ");
+  Serial.println("{'operation':'noserialoutput'}");
+  Serial.println("{'operation':'normalserialoutput'}  ");
+  Serial.println("{'operation':'verboseserialoutput'}  ");
 }
 
 void loop() 
