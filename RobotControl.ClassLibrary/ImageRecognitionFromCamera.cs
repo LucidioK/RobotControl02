@@ -70,7 +70,10 @@ namespace RobotControl.ClassLibrary
 
             for (int i = 0; i < 8 && frame.Rows <= 0; i++)
             {
-                videoCapture.Read(frame);
+                if (videoCapture.Read(frame))
+                {
+                    break;
+                }
             }
 
             if (frame.Rows <= 0)

@@ -12,7 +12,12 @@ namespace RobotControl.ClassLibrary
     {
         private readonly RobotCommunicationParameters parameters;
         private SerialPort serialPort = null;
+
         private int arduinoSerialPortNumber = -1;
+        private int LFromRobot = -1;
+        private int RFromRobot = -1;
+        private string latestStringFromSerial = "";
+        private object serialLock = new object();
 
         public RobotCommunication(RobotCommunicationParameters parameters)
         {
@@ -28,7 +33,6 @@ namespace RobotControl.ClassLibrary
                 {
                     if (OpenPort(j))
                     {
-
                         System.Diagnostics.Debug.WriteLine($"-->RobotCommunication.StartAsync Opened port {j} <--");
                         arduinoSerialPortNumber = j;
                         return;
@@ -59,6 +63,8 @@ namespace RobotControl.ClassLibrary
                 {
                     serialPort.Open();
                     serialPort.ReadExisting();
+                    serialPort.DataReceived += OnSerialDataReceived;
+                    serialPort.WriteLine("{'operation':'constantreadsensors'}");
                     shouldContinueTryingToOpen = false;
                 }
                 catch (UnauthorizedAccessException)
@@ -76,6 +82,14 @@ namespace RobotControl.ClassLibrary
             return serialPort.IsOpen;
         }
 
+        private void OnSerialDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            lock (serialLock)
+            {
+                latestStringFromSerial = ((SerialPort)sender).ReadLine();
+            }
+        }
+
         private void ReopenPort()
         {
             if (arduinoSerialPortNumber >= 0)
@@ -88,27 +102,17 @@ namespace RobotControl.ClassLibrary
             }
         }
 
-        public async Task<RobotCommunicationResult> ReadAsync() => await Task.Run(async () =>
+        public async Task<RobotCommunicationResult> ReadAsync() => await Task.Run(() =>
         {
-            System.Diagnostics.Debug.WriteLine($"-->RobotCommunication.ReadAsync trying to read port {arduinoSerialPortNumber}.");
-            for (int i = 0; i < 8; i++)
+            string json = string.Empty;
+            lock (serialLock)
             {
-                serialPort.ReadExisting();
-                await WriteAsync("{'operation':'readsensors'}");
-                string json = string.Empty;
-                try
-                {
-                    json = serialPort.ReadLine();
-                    System.Diagnostics.Debug.WriteLine($"-->RobotCommunication.ReadAsync read {json}");
-                }
-                catch (TimeoutException)
-                {
-                    System.Diagnostics.Debug.WriteLine("-->RobotCommunication.ReadAsync TIMEOUT, will reopen port.");
-                    ReopenPort();
-                    Thread.Sleep(10);
-                    continue;
-                }
+                json = latestStringFromSerial;
+                latestStringFromSerial = string.Empty;
+            }
 
+            if (!string.IsNullOrEmpty(json))
+            {
                 try
                 {
                     var result = JsonConvert.DeserializeObject<RobotCommunicationResult>(json);
@@ -117,22 +121,28 @@ namespace RobotControl.ClassLibrary
                     result.AccelY *= -1;
                     result.AccelZ *= -1;
                     result.RobotCommunication = this;
-                    return result;
+                    LFromRobot = (int)result.L;
+                    RFromRobot = (int)result.R;
+                    return Task.FromResult(result);
                 }
                 catch (Exception)
                 {
                     System.Diagnostics.Debug.WriteLine($"-->RobotCommunication.ReadAsync bad json, will try again: {json}");
-                    Thread.Sleep(10);
                 }
             }
 
             System.Diagnostics.Debug.WriteLine($"-->RobotCommunication.ReadAsync could not get data, will return empty RobotCommunicationResult");
 
-            return new RobotCommunicationResult();
+            return Task.FromResult(new RobotCommunicationResult());
         });
 
         public async Task SetMotorsAsync(int l, int r, int timeMiliseconds = -1) => await Task.Run(async () =>
         {
+            if (LFromRobot == l && RFromRobot == r)
+            {
+                return;
+            }
+
             if (timeMiliseconds >= 0)
             {
                 await WriteAsync($"{{'operation':'timedmotor','l':{l},'r':{r},'t':{timeMiliseconds}}}");

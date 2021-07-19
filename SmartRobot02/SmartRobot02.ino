@@ -1,6 +1,8 @@
 /*
  * {'operation':'id'}
  * {'operation':'readsensors'}
+ * {'operation':'constantreadsensors'}
+ * {'operation':'stopconstantreadsensors'}
  * {'operation':'stop'}
  * {'operation':'noserialoutput'}
  * {'operation':'motor','l':200,'r':200}
@@ -15,7 +17,7 @@
 #include <Adafruit_LSM303DLH_Mag.h>
 #include <Adafruit_Sensor.h>
 #include <L298NX2.h>
-#include "VoltageReader.h"
+//#include "VoltageReader.h"
 #include <VL53L0X.h>
 
 enum RobotStateEnum
@@ -44,7 +46,7 @@ L298NX2 motors(EN_A, IN1_A, IN2_A, EN_B, IN1_B, IN2_B);
 
 RobotStateEnum             robotState = NONE;
 SerialVerboseEnum          serialVerbose = NORMAL;
-VoltageReader              voltageReader    (A0, 47000, 33000);
+//VoltageReader              voltageReader    (A0, 47000, 33000);
 
 VL53L0X                        distance;
 // Adafruit_SI1145                uv      = Adafruit_SI1145();
@@ -52,9 +54,11 @@ Adafruit_LSM303_Accel_Unified  accel   = Adafruit_LSM303_Accel_Unified(54321);
 Adafruit_LSM303DLH_Mag_Unified mag     = Adafruit_LSM303DLH_Mag_Unified(12345);
 bool                           accelOK = false;
 bool                           magOK   = false;
+bool                           constantReadSensors = false;
 // bool                           uvOK    = false;
 
 String outStatus;
+String sensorValues;
 int lPower = 0, rPower = 0;
 float currentDistanceInCentimeters = 0;
 String noneStr = "NONE", movnStr = "MOVN", caliStr = "CALI", stopStr = "STOP", unknStr = "UNKN";
@@ -87,6 +91,7 @@ void verbose(String s)
 void controlMotors(int l, int r)
 {
   lPower = l; rPower = r;
+  verbose("--> controlMotors l=");verbose(String(l));verbose(" r=");verbose(String(r));verbose("<NewLine>");
   if (l == 0 && r == 0)
   {
     //Serial.println("Stop!");
@@ -207,6 +212,19 @@ void readAndDispatchCommands()
       return;
     }
 
+    if (operation == "constantreadsensors")
+    {
+      constantReadSensors = true;
+      return;
+    }
+
+
+    if (operation == "stopconstantreadsensors")
+    {
+      constantReadSensors = false;
+      return;
+    }
+    
     if (operation == "noserialoutput")
     {
       serialVerbose = NOSERIAL;
@@ -262,20 +280,18 @@ float getCompassHeading()
   mag.getEvent(&event);
  
   float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / 3.14159;
- 
+  if (abs(heading) < 0.1)
+  {
+    mag.getEvent(&event);
+    heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / 3.14159; 
+  }
+  
   if (heading < 0)
   {
     heading = 360 + heading;
   }
 
   return heading;
-}
-
-float roundTo1Digit(float n)
-{
-  int n2 = (int)(n * 10);
-  n = (float)n2 / 10.0;
-  return n;
 }
 
 String quote = String('"');
@@ -285,11 +301,11 @@ String strRep(String key, String val)
 }
 String intRep(String key, int val)
 {
-  return (quote + key + quote +":" + quote + String(val) + quote + ",");
+  return (quote + key + quote +":" + String(val) + ",");
 }
 String fltRep(String key, float val)
 {
-  return (quote + key + quote +":" + quote + String(val, 1) + quote + ",");
+  return (quote + key + quote +":" + String(val, 1) + ",");
 }
 
 void sendSensorValues()
@@ -299,32 +315,31 @@ void sendSensorValues()
     return;
   }
   
-  String sv = "{";
-  sv += strRep("dataType", "sensorvalues");
-  sv += strRep("state", getStateName());
-  sv += intRep("l", lPower);
-  sv += intRep("r", rPower);
+  sensorValues = "{";
+  sensorValues += strRep("dataType", "sensorvalues");
+  sensorValues += strRep("state", getStateName());
+  sensorValues += intRep("l", lPower);
+  sensorValues += intRep("r", rPower);
+  sensorValues += fltRep("compass", getCompassHeading());
+  sensorValues += fltRep("distance", currentDistanceInCentimeters);
   if (accelOK)
   {
     sensors_event_t event;
     accel.getEvent(&event);
-    sv += fltRep("accelX", event.acceleration.x);
-    sv += fltRep("accelY", event.acceleration.y);
-    sv += fltRep("accelZ", event.acceleration.z);
+    sensorValues += fltRep("accelX", event.acceleration.x);
+    sensorValues += fltRep("accelY", event.acceleration.y);
+    sensorValues += fltRep("accelZ", event.acceleration.z);
   }
   else
   {
     outStatus += "accelNOK;";
   }
 
-  sv += fltRep("compass", getCompassHeading());
-
-  sv += fltRep("distance", currentDistanceInCentimeters);
-  sv += fltRep("voltage", voltageReader.Get());
-  sv += strRep("status", outStatus);
-  sv.remove(sv.length() -1);
-  sv += "}";
-  Serial.println(sv);
+//  sensorValues += fltRep("voltage", voltageReader.Get());
+  sensorValues += strRep("status", outStatus);
+  sensorValues.remove(sensorValues.length() -1);
+  sensorValues += "}";
+  Serial.println(sensorValues);
  
 }
 
@@ -372,19 +387,11 @@ void setup()
   initializeAccel();
 
   stop();
-  Serial.println("Device is ready 20210717 1741");  
-  Serial.println("Accepted commands:");  
-  Serial.println("{'operation':'id'}");
-  Serial.println("{'operation':'readsensors'}");
-  Serial.println("{'operation':'stop'}");
-  Serial.println("{'operation':'motor','l':200,'r':200}");
-  Serial.println("{'operation':'timedmotor','l':200,'r':200,'t':5000}  ");
-  Serial.println("{'operation':'timedmotor','l':200,'r':200,'t':5000}  ");
-  Serial.println("{'operation':'noserialoutput'}");
-  Serial.println("{'operation':'normalserialoutput'}  ");
-  Serial.println("{'operation':'verboseserialoutput'}  ");
+  Serial.println("Device is ready 20210719 1051");  
+  Serial.println("Accepted commands: See comments at top of this source code.");  
 }
 
+unsigned long milliseconds = 0;
 void loop() 
 {
   outStatus = "";
@@ -395,4 +402,9 @@ void loop()
   }
   
   readAndDispatchCommands();
+  if (constantReadSensors && (millis() - milliseconds > 100))
+  {
+    milliseconds = millis();
+    sendSensorValues();
+  }
 }

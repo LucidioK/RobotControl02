@@ -399,6 +399,7 @@ namespace RobotControl.UI
                         await thisWindow.ScanRightAsync(robotCommunication);
                     }
 
+                    int previousScanPower = thisWindow.scanPowerValue;
                     while (!thisWindow.cancellationToken.IsCancellationRequested)
                     {
                         var start = DateTime.Now;
@@ -409,6 +410,16 @@ namespace RobotControl.UI
                         await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, robotCommunication);
                         var elapsed = (DateTime.Now - start).TotalMilliseconds;
                         await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = elapsed.ToString());
+
+                        if (thisWindow.scanPowerValue != previousScanPower)
+                        {
+                            await robotCommunication.StopMotorsAsync();
+                            if (thisWindow.Configuration.ScanPower > 0)
+                            {
+                                await thisWindow.ScanRightAsync(robotCommunication);
+                            }
+                            previousScanPower = thisWindow.scanPowerValue;
+                        }
                     }
                 }
             }
