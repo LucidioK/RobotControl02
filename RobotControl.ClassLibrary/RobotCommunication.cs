@@ -10,6 +10,7 @@ namespace RobotControl.ClassLibrary
 {
     internal class RobotCommunication : IRobotCommunication
     {
+        private const int ReadTimeOut = 200;
         private readonly RobotCommunicationParameters parameters;
         private SerialPort serialPort = null;
 
@@ -45,24 +46,32 @@ namespace RobotControl.ClassLibrary
             throw new Exception($"Cannot find SmartRobot02 COM port. Check if the robot is connected to a USB port. Check if Arduino IDE or other app is using the port. Aborting.");
         });
 
+
         private bool OpenPort(int portNumber)
         {
-            if (serialPort != null && serialPort.IsOpen)
-            {
-                serialPort.Close();
-            }
+            ClosePortIfNeeded();
 
             serialPort = new SerialPort($"COM{portNumber}", parameters.BaudRate);
             // this seems to be important for Arduino:
             serialPort.RtsEnable = true;
-            serialPort.ReadTimeout = 200;
+            serialPort.ReadTimeout = ReadTimeOut;
             bool shouldContinueTryingToOpen = true;
             for (var k = 0; !serialPort.IsOpen && k < 8 && shouldContinueTryingToOpen; k++)
             {
                 try
                 {
+                    serialPort.Close();
                     serialPort.Open();
                     serialPort.ReadExisting();
+                    serialPort.WriteLine("{'operation':'id'}");
+                    Thread.Sleep(ReadTimeOut/2);
+                    if (!ReadLineIfPossible().StartsWith("SmartRobot02"))
+                    {
+                        ClosePortIfNeeded();
+                        shouldContinueTryingToOpen = false;
+                        continue;
+                    }
+
                     serialPort.DataReceived += OnSerialDataReceived;
                     serialPort.WriteLine("{'operation':'constantreadsensors'}");
                     shouldContinueTryingToOpen = false;
@@ -82,11 +91,31 @@ namespace RobotControl.ClassLibrary
             return serialPort.IsOpen;
         }
 
+        private void ClosePortIfNeeded()
+        {
+            if (serialPort != null && serialPort.IsOpen)
+            {
+                serialPort.Close();
+            }
+        }
+
+        private string ReadLineIfPossible()
+        {
+            try
+            {
+                return serialPort.ReadLine();
+            }
+            catch (TimeoutException) { }
+            catch (IOException) { }
+
+            return string.Empty;
+        }
+
         private void OnSerialDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             lock (serialLock)
             {
-                latestStringFromSerial = ((SerialPort)sender).ReadLine();
+                latestStringFromSerial = ReadLineIfPossible();
             }
         }
 

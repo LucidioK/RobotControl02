@@ -19,6 +19,7 @@ using System.Windows.Threading;
 using System.Linq;
 using System.Management;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace RobotControl.UI
 {
@@ -33,7 +34,7 @@ namespace RobotControl.UI
         private readonly string configurationPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "RobotControlConfiguration.json");
 
         //private          IImageRecognitionFromCamera imageRecognitionFromCamera;
-        //private          IRobotCommunication         robotCommunication;
+        private          IRobotCommunication         robotCommunication;
         private string[] labelsOfObjectsToDetect;
         private TimeChart accelXTimeChart;
         private TimeChart accelYTimeChart;
@@ -80,7 +81,7 @@ namespace RobotControl.UI
                 return configuration;
             }
             set => configuration = value;
-        }        
+        }
 
         private string compassPointingTo;
         private float compassHeading;
@@ -213,11 +214,12 @@ namespace RobotControl.UI
         public static List<string> GetAllConnectedCameras()
         {
             var cameraNames = new List<string>();
-            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE (PNPClass = 'Image' OR PNPClass = 'Camera' OR Caption like 'Iriun WebCam')"))
+            var captionRegex = new Regex("camera|webcam", RegexOptions.IgnoreCase);
+            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity"))
             {
                 foreach (var device in searcher.Get())
                 {
-                    if (device == null || device["Caption"] == null)
+                    if (device == null || device["Caption"] == null || !captionRegex.IsMatch((string)device["Caption"]))
                     {
                         continue;
                     }
@@ -240,29 +242,41 @@ namespace RobotControl.UI
             }
         }
 
-        private void startStop_Click(object sender, RoutedEventArgs e) =>
-           LockedExec(() =>
-           {
-               btnCalibrateCompass.IsEnabled = false;
-               if ((string)startStop.Content == "Start")
-               {
-                   PleaseSay($"Started seeking for {string.Join(", ", labelsOfObjectsToDetect)}");
-                   SaveConfigurationData();
-                   robotThread = new Thread(WorkerThreadProc);
-                   robotThread.Start(this);
-                   startStop.Content = "Stop";
-               }
-               else
-               {
-                   PleaseSay($"Stopping...");
-                   cancellationTokenSource.Cancel();
-                   robotThread.Join();
-                   startStop.Content = "Start";
-                   PleaseSay($"Stopped.");
-                   this.Close();
-               }
-           });
+        private async void startStop_ClickAsync(object sender, RoutedEventArgs e)
+        {
+            if ((string)startStop.Content == "Start")
+            {
+                var rc = new RobotCommunicationParameters
+                {
+                    BaudRate = int.Parse(this.baudRateComboBox.Text)
+                };
+                robotCommunication = ClassFactory.CreateRobotCommunication(rc);
+                await robotCommunication.StartAsync();
+            }
 
+            LockedExec(() =>
+            {
+                btnCalibrateCompass.IsEnabled = false;
+                if ((string)startStop.Content == "Start")
+                {
+                    PleaseSay($"Started seeking for {string.Join(", ", labelsOfObjectsToDetect)}");
+                    SaveConfigurationData();
+
+                    robotThread = new Thread(WorkerThreadProc);
+                    robotThread.Start(this);
+                    startStop.Content = "Stop";
+                }
+                else
+                {
+                    PleaseSay($"Stopping...");
+                    cancellationTokenSource.Cancel();
+                    robotThread.Join();
+                    startStop.Content = "Start";
+                    PleaseSay($"Stopped.");
+                    this.Close();
+                }
+            });
+        }
         private void LockedExec(Action action)
         {
             lock (buttonLock)
@@ -367,10 +381,9 @@ namespace RobotControl.UI
         private static async void WorkerThreadProc(object obj)
         {
             var thisWindow = (MainWindow)obj;
-            int baudRate = 0, cameraId = 0;
+            int cameraId = 0;
             await thisWindow.Dispatcher.InvokeAsync(() =>
             {
-                baudRate = int.Parse(thisWindow.baudRateComboBox.Text);
                 cameraId = Math.Max(0, thisWindow.cameraComboBox.SelectedIndex);
             });
 
@@ -380,46 +393,39 @@ namespace RobotControl.UI
                 LabelsOfObjectsToDetect = thisWindow.labelsOfObjectsToDetect,
                 CameraId = cameraId,
             };
-            RobotCommunicationParameters rc = new RobotCommunicationParameters
-            {
-                BaudRate = baudRate
-            };
+
             using (var imageRecognitionFromCamera = ClassFactory.CreateImageRecognitionFromCamera(ip))
             {
-                using (var robotCommunication = ClassFactory.CreateRobotCommunication(rc))
+                await imageRecognitionFromCamera.StartAsync();
+
+                await thisWindow.HandleImageRecognitionFromCameraResultAsync(
+                    await imageRecognitionFromCamera.GetAsync(), thisWindow.robotCommunication);
+
+                if (thisWindow.CurrentL != thisWindow.lurchPowerValue)
                 {
-                    await robotCommunication.StartAsync();
-                    await imageRecognitionFromCamera.StartAsync();
+                    await thisWindow.ScanRightAsync(thisWindow.robotCommunication);
+                }
 
-                    await thisWindow.HandleImageRecognitionFromCameraResultAsync(
-                        await imageRecognitionFromCamera.GetAsync(), robotCommunication);
+                int previousScanPower = thisWindow.scanPowerValue;
+                while (!thisWindow.cancellationToken.IsCancellationRequested)
+                {
+                    var start = DateTime.Now;
+                    var robotData = await thisWindow.robotCommunication.ReadAsync();
+                    await thisWindow.HandleRobotCommuniationResultAsync(robotData);
 
-                    if (thisWindow.CurrentL != thisWindow.lurchPowerValue)
+                    var imageData = await imageRecognitionFromCamera.GetAsync();
+                    await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, thisWindow.robotCommunication);
+                    var elapsed = (DateTime.Now - start).TotalMilliseconds;
+                    await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = elapsed.ToString());
+
+                    if (thisWindow.scanPowerValue != previousScanPower)
                     {
-                        await thisWindow.ScanRightAsync(robotCommunication);
-                    }
-
-                    int previousScanPower = thisWindow.scanPowerValue;
-                    while (!thisWindow.cancellationToken.IsCancellationRequested)
-                    {
-                        var start = DateTime.Now;
-                        var robotData = await robotCommunication.ReadAsync();
-                        await thisWindow.HandleRobotCommuniationResultAsync(robotData);
-
-                        var imageData = await imageRecognitionFromCamera.GetAsync();
-                        await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, robotCommunication);
-                        var elapsed = (DateTime.Now - start).TotalMilliseconds;
-                        await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = elapsed.ToString());
-
-                        if (thisWindow.scanPowerValue != previousScanPower)
+                        await thisWindow.robotCommunication.StopMotorsAsync();
+                        if (thisWindow.Configuration.ScanPower > 0)
                         {
-                            await robotCommunication.StopMotorsAsync();
-                            if (thisWindow.Configuration.ScanPower > 0)
-                            {
-                                await thisWindow.ScanRightAsync(robotCommunication);
-                            }
-                            previousScanPower = thisWindow.scanPowerValue;
+                            await thisWindow.ScanRightAsync(thisWindow.robotCommunication);
                         }
+                        previousScanPower = thisWindow.scanPowerValue;
                     }
                 }
             }
@@ -726,5 +732,19 @@ namespace RobotControl.UI
                 }
             }));
 
+        private void btnTurnRightOneDegree_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void btnTurnLeftOneDegree_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void btnStopMotors_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }
