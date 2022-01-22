@@ -10,5 +10,11 @@ namespace RobotControl.ClassLibrary
         Task WriteAsync(string s);
         Task StartAsync();
         Task StopMotorsAsync();
+
+        RobotCommunicationResult Read();
+        void SetMotors(int l, int r, int timeMiliseconds = -1);
+        void Write(string s);
+        void Start();
+        void StopMotors();
     }
 }

@@ -9,6 +9,7 @@
  * {'operation':'timedmotor','l':200,'r':200,'t':5000}
  * {'operation':'normalserialoutput'}
  * {'operation':'verboseserialoutput'}
+ * {'operation':'pointto','a':45,'p':175}
  */
 #include <SPI.h>
 #include <ArduinoJson.h>
@@ -97,22 +98,6 @@ void controlMotors(int l, int r)
     //Serial.println("Stop!");
     motors.stop();
   }
-/*  else if (l == r)
-  {
-    Serial.print("Same speed");
-    if (l > 0) 
-    { 
-      Serial.print(" forward ");
-      motors.forward(); 
-    }
-    else 
-    { 
-      Serial.print(" backward ");
-      motors.backward(); 
-    }
-    Serial.println(l);
-    motors.setSpeed(abs(l));
-  }*/
   else
   {
     verbose("Move!");
@@ -234,12 +219,14 @@ void readAndDispatchCommands()
     if (operation == "normalserialoutput")
     {
       serialVerbose = NORMAL;
+      Serial.println("Normal.");
       return;      
     }
 
     if (operation == "verboseserialoutput")
     {
       serialVerbose = VERBOSE;
+      Serial.println("Verbose.");
       return;      
     }
 
@@ -266,6 +253,16 @@ void readAndDispatchCommands()
       stop();
       return;
     }
+
+    if (operation == "pointto")
+    {
+      robotState = MOVING;
+      int angle = getJsonIntValue(s, "a");
+      int power = getJsonIntValue(s, "p");
+      pointTo((float)angle, (float)power);
+      stop();
+      return;      
+    }
   }
 }
 
@@ -291,6 +288,7 @@ float getCompassHeading()
     heading = 360 + heading;
   }
 
+  heading = round(heading);
   return heading;
 }
 
@@ -378,6 +376,38 @@ void initializeAccel()
   }
 }
 
+void pointTo(float angle, float power)
+{
+  float heading = getCompassHeading();
+  verbose("--> pointTo starting heading=");verbose(String(heading));verbose(" angle=");verbose(String(angle));verbose(" power=");verbose(String(power));verbose("<NewLine>");
+  
+  bool turningRight = angle > heading;
+  int l = power, r = 0; // if desired angle > current angle, turn right
+  if (!turningRight)  // else, turn left
+  {
+    l = 0;
+    r = power;
+  }
+
+  controlMotors(0, 0);
+  do
+  {
+    controlMotors(l, r);
+    delay(40);
+    controlMotors(0, 0);
+    heading = getCompassHeading();
+    float distanceInCentimeters = distance.readRangeContinuousMillimeters() / 10;
+    verbose("--> pointTo heading=");verbose(String(heading));verbose(" angle=");verbose(String(angle));verbose(" distance=");verbose(String(distanceInCentimeters));verbose("<NewLine>");
+    if (distanceInCentimeters < 15)
+    {
+      break;
+    }
+  }
+  while ((turningRight && heading < angle) || (!turningRight && heading > angle));
+  stop();
+}
+
+
 void setup() 
 {
   Serial.begin(115200);
@@ -387,7 +417,7 @@ void setup()
   initializeAccel();
 
   stop();
-  Serial.println("Device is ready 20210719 1051");  
+  Serial.println("Device is ready 20220117 1850");  
   Serial.println("Accepted commands: See comments at top of this source code.");  
 }
 

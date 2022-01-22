@@ -28,38 +28,22 @@ namespace RobotControl.ClassLibrary
 
         public ImageRecognitionFromCamera(ImageRecognitionFromCameraParameters parameters)
         {
-            this.parameters = parameters;
-        }
+            this.parameters          = parameters;
+            flipY                    = true;
+            labelsOfObjectsToDetect  = parameters.LabelsOfObjectsToDetect;
 
-
-        public async Task StartAsync() => await Task.Run(() =>
-        {
-            labelsOfObjectsToDetect = parameters.LabelsOfObjectsToDetect;
-
-            tinyYoloModel = new TinyYoloModel(parameters.OnnxFilePath);
-            onnxModelConfigurator = new OnnxModelConfigurator(tinyYoloModel);
-            onnxOutputParser = new OnnxOutputParser(tinyYoloModel);
+            tinyYoloModel            = new TinyYoloModel(parameters.OnnxFilePath);
+            onnxModelConfigurator    = new OnnxModelConfigurator(tinyYoloModel);
+            onnxOutputParser         = new OnnxOutputParser(tinyYoloModel);
             tinyYoloPredictionEngine = onnxModelConfigurator.GetMlNetPredictionEngine<TinyYoloPrediction>();
-            OpenVideoCapture();
-        });
-
-        private void OpenVideoCapture()
-        {
-            if (string.IsNullOrEmpty(parameters.CameraUrl))
+            videoCapture             = new VideoCapture(parameters.CameraId);
+            if (!videoCapture.Open(parameters.CameraId))
             {
-                videoCapture = new VideoCapture(parameters.CameraId);
-                videoCapture.Open(parameters.CameraId);
-                flipY = true;
-            }
-            else
-            {
-                videoCapture = new VideoCapture(parameters.CameraUrl);
-                videoCapture.Open(parameters.CameraUrl);
-                flipY = false;
+                throw new ArgumentException($"Could not open camera {parameters.CameraId}");
             }
         }
 
-        public async Task<ImageRecognitionFromCameraResult> GetAsync() => await Task.Run(() =>
+        public ImageRecognitionFromCameraResult Get()
         {
             var frame = new Mat();
             var result = new ImageRecognitionFromCameraResult
@@ -108,7 +92,9 @@ namespace RobotControl.ClassLibrary
             result.Label = highestConfidenceBox.Label;
 
             return result;
-        });
+        }
+
+        public async Task<ImageRecognitionFromCameraResult> GetAsync() => await Task.Run(() => Get());
 
         public void Dispose()
         {

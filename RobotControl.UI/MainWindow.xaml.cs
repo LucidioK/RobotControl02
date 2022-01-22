@@ -25,19 +25,22 @@ namespace RobotControl.UI
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
+        class TurnParam
+        {
+            public MainWindow MainWindow { get; set; }
+            public float DesiredDirection { get; set; }
+        }
+
         private static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private readonly CancellationToken cancellationToken = cancellationTokenSource.Token;
         private readonly object buttonLock = new object();
         private readonly string configurationPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "RobotControlConfiguration.json");
-
+        private readonly object handleImageRecognitionFromCameraResultAsyncLock = new object();
         //private          IImageRecognitionFromCamera imageRecognitionFromCamera;
         private          IRobotCommunication         robotCommunication;
         private string[] labelsOfObjectsToDetect;
-        private TimeChart accelXTimeChart;
-        private TimeChart accelYTimeChart;
-        private TimeChart accelZTimeChart;
+
         private SpeechSynthesizer speechSynthesizer = null;
-        private Thread robotThread;
 
         private Dictionary<string, DateTime> latestSay = new Dictionary<string, DateTime>();
 
@@ -46,16 +49,12 @@ namespace RobotControl.UI
         public event PropertyChangedEventHandler PropertyChanged;
         public Random Random = new Random(DateTime.Now.Millisecond);
 
-
-
-        private string[] CompassPointingToValues = { "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
+        private Thread scanThread;
+        private Thread updateRobotDataThread;
 
         public MainWindow()
         {
             InitializeComponent();
-            accelXTimeChart = new TimeChart(accelXChart, -10, 10, TimeSpan.FromMilliseconds(100));
-            accelYTimeChart = new TimeChart(accelYChart, -10, 10, TimeSpan.FromMilliseconds(100));
-            accelZTimeChart = new TimeChart(accelZChart, -10, 10, TimeSpan.FromMilliseconds(100));
             DataContext = this;
         }
 
@@ -64,10 +63,9 @@ namespace RobotControl.UI
             base.OnInitialized(e);
             Dispatcher.Invoke(() =>
             {
-                cameraComboBox.Items.Clear();
-                GetAllConnectedCameras().ForEach(c => cameraComboBox.Items.Add(c));
                 speechSynthesizer = new SpeechSynthesizer();
                 HandleConfigurationData();
+                RobotMode = "N";
             });
         }
 
@@ -103,41 +101,51 @@ namespace RobotControl.UI
             }
         }
 
-        private async void startStop_ClickAsync(object sender, RoutedEventArgs e)
-        {
-            if ((string)startStop.Content == "Start")
-            {
-                var rc = new RobotCommunicationParameters
-                {
-                    BaudRate = int.Parse(this.baudRateComboBox.Text)
-                };
-                robotCommunication = ClassFactory.CreateRobotCommunication(rc);
-                await robotCommunication.StartAsync();
-            }
 
+        private async void btnConnect_Click(object sender, RoutedEventArgs e)
+        {
+            var previousCursor = this.Cursor;
+            this.Cursor        = Cursors.Wait;
+            var rc             = new RobotCommunicationParameters
+            {
+                BaudRate       = int.Parse(this.baudRateComboBox.Text)
+            };
+            robotCommunication = ClassFactory.CreateRobotCommunication(rc);
+            await robotCommunication.StartAsync();
+            this.Cursor        = previousCursor;
+
+            updateRobotDataThread = new Thread(UpdateRobotDataThreadProc);
+            updateRobotDataThread.Start(this);
+            Dispatcher.Invoke(() =>
+            {
+                btnConnect.IsEnabled             = false;
+                btnScan.IsEnabled                = true;
+                runMotors.IsEnabled              = true;
+                RobotMode                        = "C";
+            });
+        }
+
+        private void btnScanStop_Click(object sender, RoutedEventArgs e) =>
             LockedExec(() =>
             {
-                btnCalibrateCompass.IsEnabled = false;
-                if ((string)startStop.Content == "Start")
+                if ((string)btnScan.Content == "Scan")
                 {
                     PleaseSay($"Started seeking for {string.Join(", ", labelsOfObjectsToDetect)}");
                     SaveConfigurationData();
 
-                    robotThread = new Thread(WorkerThreadProc);
-                    robotThread.Start(this);
-                    startStop.Content = "Stop";
+                    scanThread = new Thread(ScanThreadProc);
+                    scanThread.Start(this);
+                    btnScan.Content = "Stop";
                 }
                 else
                 {
                     PleaseSay($"Stopping...");
                     cancellationTokenSource.Cancel();
-                    robotThread.Join();
-                    startStop.Content = "Start";
+                    scanThread.Join();
+                    btnScan.Content = "Scan";
                     PleaseSay($"Stopped.");
-                    this.Close();
                 }
             });
-        }
 
         private void LockedExec(Action action)
         {
@@ -233,33 +241,38 @@ namespace RobotControl.UI
 
         }
 
-        private static async void WorkerThreadProc(object obj)
+        private static void UpdateRobotDataThreadProc(object obj)
         {
             var thisWindow = (MainWindow)obj;
-            int cameraId = 0;
-            await thisWindow.Dispatcher.InvokeAsync(() =>
+            while (!thisWindow.cancellationToken.IsCancellationRequested)
             {
-                cameraId = Math.Max(0, thisWindow.cameraComboBox.SelectedIndex);
-            });
+                try
+                {
+                    var robotData = thisWindow.robotCommunication.Read();
+                    thisWindow.HandleRobotCommunicationResult(robotData);
+                }
+                catch (TaskCanceledException)
+                {
+                    thisWindow.PleaseSay("Update Robot Data cancelled.");
+                }
+            }
+        }
+
+        private static void ScanThreadProc(object obj)
+        {
+            var thisWindow = (MainWindow)obj;
 
             ImageRecognitionFromCameraParameters ip = new ImageRecognitionFromCameraParameters
             {
                 OnnxFilePath = "TinyYolo2_model.onnx",
                 LabelsOfObjectsToDetect = thisWindow.labelsOfObjectsToDetect,
-                CameraId = cameraId,
+                CameraId = 0, // Always the default camera...
             };
 
             using (var imageRecognitionFromCamera = ClassFactory.CreateImageRecognitionFromCamera(ip))
             {
-                await imageRecognitionFromCamera.StartAsync();
-
-                await thisWindow.HandleImageRecognitionFromCameraResultAsync(
-                    await imageRecognitionFromCamera.GetAsync(), thisWindow.robotCommunication);
-
-                if (thisWindow.CurrentL != thisWindow.LurchPower)
-                {
-                    await thisWindow.ScanRightAsync(thisWindow.robotCommunication);
-                }
+                //await thisWindow.HandleImageRecognitionFromCameraResultAsync(
+                //    await imageRecognitionFromCamera.GetAsync(), thisWindow.robotCommunication);
 
                 int previousScanPower = thisWindow.ScanPower;
                 while (!thisWindow.cancellationToken.IsCancellationRequested)
@@ -267,23 +280,12 @@ namespace RobotControl.UI
                     var start = DateTime.Now;
                     try
                     {
-                        var robotData = await thisWindow.robotCommunication.ReadAsync();
-                        await thisWindow.HandleRobotCommuniationResultAsync(robotData);
-
-                        var imageData = await imageRecognitionFromCamera.GetAsync();
-                        await thisWindow.HandleImageRecognitionFromCameraResultAsync(imageData, thisWindow.robotCommunication);
+                        thisWindow.SetMotors(thisWindow.robotCommunication, 0, 0, thisWindow.TimeToRun / 4);
+                        var imageData = imageRecognitionFromCamera.Get();
                         var elapsed = (DateTime.Now - start).TotalMilliseconds;
-                        await thisWindow.Dispatcher.InvokeAsync(() => thisWindow.lblObjectData.Content = elapsed.ToString());
+                        thisWindow.Dispatcher.Invoke(() => thisWindow.ObjectData = elapsed.ToString());
+                        thisWindow.HandleImageRecognitionFromCameraResult(imageData, thisWindow.robotCommunication);
 
-                        if (thisWindow.ScanPower != previousScanPower)
-                        {
-                            await thisWindow.robotCommunication.StopMotorsAsync();
-                            if (thisWindow.Configuration.ScanPower > 0)
-                            {
-                                await thisWindow.ScanRightAsync(thisWindow.robotCommunication);
-                            }
-                            previousScanPower = thisWindow.ScanPower;
-                        }
                     }
                     catch (TaskCanceledException)
                     {
@@ -293,24 +295,26 @@ namespace RobotControl.UI
             }
         }
 
-        private async Task HandleImageRecognitionFromCameraResultAsync(
+        private void HandleImageRecognitionFromCameraResult(
             ImageRecognitionFromCameraResult imageData,
             IRobotCommunication robotCommunication)
         {
             if (imageData.HasData)
             {
-
                 var objectPosition = imageData.XDeltaProportionFromBitmapCenter * 100;
                 if (objectPosition < -5) // object is to the left
                 {
-                    await SetMotorsAsync(robotCommunication, -ScanPower, ScanPower);
+                    Dispatcher.Invoke(() => RobotMode = "L");
+                    SetMotors(robotCommunication, 0, ScanPower, TimeToRun);
                 }
                 else if (objectPosition > 5) // object is to the right
                 {
-                    await SetMotorsAsync(robotCommunication, ScanPower, -ScanPower);
+                    Dispatcher.Invoke(() => RobotMode = "R");
+                    SetMotors(robotCommunication, ScanPower, 0, TimeToRun);
                 }
                 else // object is straight ahead, CHARGE!
                 {
+                    Dispatcher.Invoke(() => RobotMode = "!");
                     PleaseSayButOnlyIfNotSaidInThePast30Seconds($"Ha! {imageData.Label}, I found you!");
                     using (var gr = Graphics.FromImage(imageData.Bitmap))
                     {
@@ -320,48 +324,23 @@ namespace RobotControl.UI
                     if (PleaseLurch)
                     {
                         PleaseSayButOnlyIfNotSaidInThePast30Seconds($"Charge!");
-                        await SetMotorsAsync(robotCommunication, LurchPower, LurchPower);
+                        SetMotors(robotCommunication, LurchPower, LurchPower, TimeToRun * 20);
                     }
                 }
             }
             else
             {
-                await ScanRightAsync(robotCommunication);
+                Dispatcher.Invoke(() => RobotMode = "S");
+                SetMotors(robotCommunication, 0, ScanPower, TimeToRun * 2);
+                SetMotors(robotCommunication, 0, ScanPower * 3 / 2, TimeToRun);
             }
 
-            await Dispatcher.InvokeAsync(() =>
-                objectDetectionImage.Source = Utilities.BitmapToBitmapImage(imageData.Bitmap));
+            Dispatcher.Invoke(() => objectDetectionImage.Source = Utilities.BitmapToBitmapImage(imageData.Bitmap));
         }
 
-        private async Task ScanRightAsync(IRobotCommunication robotCommunication)
+        private void SetMotors(IRobotCommunication robotCommunication, int l, int r, int timeMiliseconds = -1)
         {
-            if (!alreadyFoundScanPower)
-            {
-                int power = 0;
-                float accelY;
-                for (power = 90; power < 255 && Math.Abs(accelY = (await robotCommunication.ReadAsync()).AccelY) < 3; power += 5)
-                {
-                    System.Diagnostics.Debug.WriteLine($"--> ScanRightAsync accelY {accelY} power {power}");
-                    await SetMotorsAsync(robotCommunication, power, -power);
-                }
-
-                System.Diagnostics.Debug.WriteLine($"--> ScanRightAsync settled with power {power}");
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    ScanPower = power;
-                });
-
-                alreadyFoundScanPower = true;
-            }
-            else
-            {
-                await SetMotorsAsync(robotCommunication, ScanPower, -ScanPower);
-            }
-        }
-
-        private async Task SetMotorsAsync(IRobotCommunication robotCommunication, int l, int r)
-        {
-            await robotCommunication.SetMotorsAsync((int)(l * LMult), (int)(r * RMult));
+            robotCommunication.SetMotors((int)(l * LMult), (int)(r * RMult), timeMiliseconds);
             CurrentL = l;
             CurrentR = r;
         }
@@ -375,7 +354,7 @@ namespace RobotControl.UI
             }
         }
 
-        private async Task HandleRobotCommuniationResultAsync(RobotCommunicationResult robotData)
+        private void HandleRobotCommunicationResult(RobotCommunicationResult robotData)
         {
             if (robotData.DataType == RobotCommunicationResult.NoData)
             {
@@ -384,22 +363,17 @@ namespace RobotControl.UI
 
             if (robotData.Distance <= 10)
             {
-                await robotData.RobotCommunication.StopMotorsAsync();
+                robotData.RobotCommunication.StopMotors();
             }
 
-            await this.Dispatcher.InvokeAsync(() =>
+            Dispatcher.Invoke(() =>
             {
-                this.AccelX   = robotData.AccelX;
-                this.AccelY   = robotData.AccelY;
-                this.AccelZ   = robotData.AccelZ;
-                this.Distance = robotData.Distance;
-                this.Voltage  = robotData.Voltage;
-                this.Compass  = robotData.Compass;
-
-                DisplayAcceleration(this.accelXImage, this.accelXTimeChart, robotData.AccelX, 1f, 2f, 3.5f);
-                DisplayAcceleration(this.accelYImage, this.accelYTimeChart, robotData.AccelY, 1f, 2f, 3.5f);
-                DisplayAcceleration(this.accelZImage, this.accelZTimeChart, (robotData.AccelZ - 10) % 10, 1f, 2f, 3.5f);
-                DisplayCompass(this.CompassImage, robotData.Compass);
+                AccelX   = robotData.AccelX;
+                AccelY   = robotData.AccelY;
+                AccelZ   = robotData.AccelZ;
+                Distance = robotData.Distance;
+                Voltage  = robotData.Voltage;
+                Compass  = robotData.Compass;
             });
         }
 
@@ -416,60 +390,7 @@ namespace RobotControl.UI
             }
 
             labelsOfObjectsToDetect = labels.ToArray();
-            startStop.IsEnabled = labels.Count > 0 && startStop.Content.ToString() == "Start";
-        }
-
-        private void DisplayCompass(System.Windows.Controls.Image compassImage, float heading)
-        {
-            CompassHeading = heading / (180 / (Configuration.CompassReadingSouth - Configuration.CompassReadingNorth));
-            var bitmap = new Bitmap((int)compassImage.Width, (int)compassImage.Height);
-            var backgroundColor = new System.Drawing.SolidBrush(System.Drawing.Color.LightYellow);
-
-            System.Drawing.Pen blackPen = new System.Drawing.Pen(System.Drawing.Color.Black, 1);
-
-            using (var gr = Graphics.FromImage(bitmap))
-            {
-                gr.FillRectangle(backgroundColor, 0, 0, bitmap.Width, bitmap.Height);
-                float hw = (float)(bitmap.Width / 2.0);
-                float hh = (float)(bitmap.Height / 2.0);
-                float x1 = hw;
-                float y1 = hh;
-                float si = (float)Math.Sin(CompassHeading) * -1;
-                float co = (float)Math.Cos(CompassHeading) * -1;
-                float x2 = x1 + (hw * co);
-                float y2 = y1 + (hh * si);
-                gr.DrawLine(blackPen, x1, y1, x2, y2);
-            }
-
-            compassImage.Source = Utilities.BitmapToBitmapImage(bitmap);
-        }
-
-        private void DisplayAcceleration(
-            System.Windows.Controls.Image accelDisplay,
-            TimeChart timeChart,
-            float acceleration,
-            float greenThreshold,
-            float yellowThreshold,
-            float redThreshold)
-        {
-            var bitmap = new Bitmap((int)accelDisplay.Width, (int)accelDisplay.Height);
-            System.Drawing.Color backgroundColor = System.Drawing.Color.Green;
-            if (Math.Abs(acceleration) >= redThreshold) backgroundColor = System.Drawing.Color.Red;
-            else if (Math.Abs(acceleration) >= yellowThreshold) backgroundColor = System.Drawing.Color.Yellow;
-            var backgroundBrush = new System.Drawing.SolidBrush(backgroundColor);
-            using (var gr = Graphics.FromImage(bitmap))
-            {
-                gr.FillRectangle(backgroundBrush, 0, 0, bitmap.Width, bitmap.Height);
-                float x1 = (float)(bitmap.Width / 2.0);
-                float y1 = bitmap.Height - 1;
-                float x2 = x1 + bitmap.Width * (acceleration / 10);
-                float y2 = (acceleration / 10) * bitmap.Height;
-                gr.DrawLine(new System.Drawing.Pen(System.Drawing.Color.Black, 1), x1, y1, x2, y2);
-            }
-
-            accelDisplay.Source = Utilities.BitmapToBitmapImage(bitmap);
-
-            timeChart?.Post(acceleration, backgroundColor);
+            btnScan.IsEnabled = labels.Count > 0 && btnScan.Content.ToString() == "Scan";
         }
 
         private void objectsToDetectSelectionChanged(object sender, RoutedEventArgs e)
@@ -486,57 +407,17 @@ namespace RobotControl.UI
             }
 
             labelsOfObjectsToDetect = labels.ToArray();
-            startStop.IsEnabled = labels.Count > 0 && startStop.Content.ToString() == "Start";
+            btnScan.IsEnabled = labels.Count > 0 && btnScan.Content.ToString() == "Start";
         }
 
-        private void runMotors_Click(object sender, RoutedEventArgs e)
+        private async void runMotors_Click(object sender, RoutedEventArgs e)
         {
-
+            await robotCommunication.SetMotorsAsync((int)(LPower * LMult), (int)(RPower * RMult), TimeToRun);
         }
 
-        private async void btnCalibrateCompass_Click(object sender, RoutedEventArgs e) =>
-            await Task.Run(() => InvokeLockedExec(async () =>
-            {
-                var rc = new RobotCommunicationParameters { BaudRate = int.Parse(baudRateComboBox.Text) };
-
-                using (var robotCommunication = ClassFactory.CreateRobotCommunication(rc))
-                {
-                    await robotCommunication.StartAsync();
-                    switch (btnCalibrateCompass.Content)
-                    {
-                        case "Calibrate compass":
-                            btnCalibrateCompass.Content = "Point North, then click here";
-                            break;
-                        case "Point North, then click here":
-                            Configuration.CompassReadingNorth = (await robotCommunication.ReadAsync()).Compass;
-                            btnCalibrateCompass.Content = "Now point South, then click here";
-                            break;
-                        case "Now point South, then click here":
-                            Configuration.CompassReadingSouth = (await robotCommunication.ReadAsync()).Compass;
-                            btnCalibrateCompass.Content = "Done calibrating compass";
-                            btnCalibrateCompass.IsEnabled = false;
-                            SaveConfigurationData();
-                            break;
-                    }
-                }
-            }));
-
-        private void btnTurnRightOneDegree_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void btnTurnLeftOneDegree_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private async void btnStopMotors_Click(object sender, RoutedEventArgs e) => await this.robotCommunication?.StopMotorsAsync();
-        private void PleaseSay(string s) => new Thread(() => new SpeechSynthesizer().Speak(s)).Start();
+        private void PleaseSay(string s) => new Thread(() => new SpeechSynthesizer().Speak(SayThis = s)).Start();
         private bool IsChecked(CheckBox checkBox) => checkBox.IsChecked.HasValue ? checkBox.IsChecked.Value : false;
         private List<string> GetPropertyNames(object o) => o.GetType().GetProperties().Select(p => p.Name).ToList();
         private void saveConfiguration_Click(object sender, RoutedEventArgs e) => SaveConfigurationData();
-        private float RadiansToDegrees(float radians) => (float)((((double)radians + 90) % 360) * Math.PI / 180.0);
-
     }
 }

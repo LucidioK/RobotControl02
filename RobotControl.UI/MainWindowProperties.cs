@@ -21,12 +21,16 @@ namespace RobotControl.UI
         private int    currentL;
         private int    currentR;
         private float  distance;
+        private string latestCommand;
         private float  lMult;
         private int    lPower;
         private int    lurchPower;
+        private string objectData;
         private bool   pleaseLurch;
         private float  rMult;
+        private string robotMode;
         private int    rPower;
+        private string sayThis;
         private int    scanPower;
         private int    timeToRun;
         private float  voltage;
@@ -68,12 +72,16 @@ namespace RobotControl.UI
         public int    CurrentL          { get => currentL;          set => SetAndNotify(ref currentL,          value, nameof(CurrentL));          }
         public int    CurrentR          { get => currentR;          set => SetAndNotify(ref currentR,          value, nameof(CurrentR));          }
         public float  Distance          { get => distance;          set => SetAndNotify(ref distance,          value, nameof(Distance));          }
+        public string LatestCommand     { get => latestCommand;     set => SetAndNotify(ref latestCommand,     value, nameof(LatestCommand));     }
         public float  LMult             { get => lMult;             set => SetAndNotify(ref lMult,             value, nameof(LMult));             }
         public int    LPower            { get => lPower;            set => SetAndNotify(ref lPower,            value, nameof(LPower));            }
         public int    LurchPower        { get => lurchPower;        set => SetAndNotify(ref lurchPower,        value, nameof(LurchPower));        }
+        public string ObjectData        { get => objectData;        set => SetAndNotify(ref objectData,        value, nameof(ObjectData));        }
         public bool   PleaseLurch       { get => pleaseLurch;       set => SetAndNotify(ref pleaseLurch,       value, nameof(PleaseLurch));       }
         public float  RMult             { get => rMult;             set => SetAndNotify(ref rMult,             value, nameof(RMult));             }
+        public string RobotMode         { get => robotMode;         set => SetAndNotify(ref robotMode,         value, nameof(RobotMode));         }
         public int    RPower            { get => rPower;            set => SetAndNotify(ref rPower,            value, nameof(RPower));            }
+        public string SayThis           { get => sayThis;           set => SetAndNotify(ref sayThis,           value, nameof(SayThis));           }
         public int    ScanPower         { get => scanPower;         set => SetAndNotify(ref scanPower,         value, nameof(ScanPower));         }
         public int    TimeToRun         { get => timeToRun;         set => SetAndNotify(ref timeToRun,         value, nameof(TimeToRun));         }
         public float  Voltage           { get => voltage;           set => SetAndNotify(ref voltage,           value, nameof(Voltage));           }

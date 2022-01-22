@@ -11,6 +11,8 @@ namespace RobotControl.UI
         public int   SerialPortBaudrate   { get;          set; } = 115200;
         public int   ScanPower            { get;          set; } = 100;
         public int   LurchPower           { get;          set; } = 100;
+        public int   ScanInterval         { get;          set; } = 200;
+        public int   LurchInterval        { get;          set; } = 5000;
         public bool  EnableAudio          { get;          set; } = true;
         public bool  ScanForObjects       { get;          set; } = true;
         public bool  PleaseLurch          { get;          set; } = true;

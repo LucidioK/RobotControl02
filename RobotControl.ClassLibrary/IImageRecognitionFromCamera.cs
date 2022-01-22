@@ -6,6 +6,6 @@ namespace RobotControl.ClassLibrary
     public interface IImageRecognitionFromCamera : IDisposable
     {
         Task<ImageRecognitionFromCameraResult> GetAsync();
-        Task StartAsync();
+        ImageRecognitionFromCameraResult Get();
     }
 }
